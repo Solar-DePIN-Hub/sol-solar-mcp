@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Sol Solar MCP server. Lambda function URL plus a DynamoDB cache and token table.
+
+Parameters:
+  PublicBaseUrl:
+    Type: String
+    Default: ""
+    Description: HTTPS origin with no trailing slash. Set this to the function URL after the first deploy, then deploy again so OAuth metadata matches.
+
+Resources:
+  CacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  McpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: sol-solar-mcp
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: dist/lambda.handler
+      CodeUri: ..
+      Timeout: 20
+      MemorySize: 512
+      Environment:
+        Variables:
+          NODE_ENV: production
+          TOKEN_STORE: dynamodb
+          DYNAMODB_TABLE: !Ref CacheTable
+          PUBLIC_BASE_URL: !Ref PublicBaseUrl
+          TOKEN_TTL_SECONDS: "43200"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CacheTable
+      FunctionUrlConfig:
+        AuthType: NONE
+
+Outputs:
+  FunctionUrl:
+    Description: Copy this URL, strip the trailing slash, and redeploy with parameter PublicBaseUrl set to it.
+    Value: !GetAtt McpFunction.FunctionUrl
+  TableName:
+    Value: !Ref CacheTable

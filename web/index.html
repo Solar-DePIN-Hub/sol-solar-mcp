@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sol Solar — when should I run the washing machine?</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="12"></circle>
+        <g fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M32 6v8M32 50v8M6 32h8M50 32h8M13 13l6 6M45 45l6 6M51 13l-6 6M19 45l-6 6"></path>
+        </g>
+      </svg>
+      <div>
+        <p class="eyebrow">Home solar, spoken</p>
+        <p class="wordmark">Sol Solar</p>
+      </div>
+    </div>
+    <button id="connect" type="button">Connect this browser</button>
+  </header>
+
+  <main>
+    <section class="ask" aria-label="Questions">
+      <p class="prompt-label">Ask as you would ask a voice assistant</p>
+      <div class="chips">
+        <button type="button" data-ask="wash">When should I run the washing machine today?</button>
+        <button type="button" data-ask="forecast">How much will the roof make today and tomorrow?</button>
+        <button type="button" data-ask="briefing">Give me today's solar briefing.</button>
+        <button type="button" data-ask="savings">What do I save against a 7 PM start?</button>
+      </div>
+    </section>
+
+    <section class="stage">
+      <article class="answer" aria-live="polite">
+        <p class="kicker" id="kicker">Spoken answer</p>
+        <h1 id="headline">Connect, then ask when to run the washing machine.</h1>
+        <p id="rest">The words come from the tool. This page does not call a language model, so it cannot invent a kilowatt-hour.</p>
+      </article>
+      <aside class="roof" aria-label="Expected production">
+        <h2>Expected production</h2>
+        <div id="charts" class="charts"><p class="muted">The day's shape appears after a question.</p></div>
+      </aside>
+    </section>
+
+    <form class="setup" id="setup">
+      <label>Place <input id="place" name="place" value="Kyiv" autocomplete="off" required></label>
+      <label>Array kW <input id="system" name="system" type="number" min="0.05" max="200" step="0.1" value="5" required></label>
+      <label>Tilt ° <input id="tilt" name="tilt" type="number" min="0" max="90" step="1" value="35"></label>
+      <label>Facing
+        <select id="azimuth" name="azimuth">
+          <option value="0" selected>South</option>
+          <option value="-45">Southeast</option>
+          <option value="45">Southwest</option>
+          <option value="-90">East</option>
+          <option value="90">West</option>
+          <option value="180">North</option>
+        </select>
+      </label>
+      <label>Appliance <input id="appliance" name="appliance" value="washing machine" required></label>
+      <label>Power kW <input id="power" name="power" type="number" min="0.05" max="50" step="0.1" value="0.7" required></label>
+      <label>Hours <input id="duration" name="duration" type="number" min="0.25" max="12" step="0.25" value="2" required></label>
+      <label>Price / kWh <input id="price" name="price" type="number" min="0" max="10000" step="0.01" placeholder="optional"></label>
+      <label>Currency <input id="currency" name="currency" maxlength="3" placeholder="UAH"></label>
+    </form>
+    <p class="assumption">Power, hours, and price are assumptions you type. They are not read from a meter or a utility.</p>
+
+    <details class="trace">
+      <summary>MCP trace</summary>
+      <ol id="trace"></ol>
+    </details>
+  </main>
+
+  <footer>
+    <p>Built in October 2026 for the Amazon Developer Hackathon, Alexa+ track. Protocol 2025-11-25 over Streamable HTTP. This page is a simulated voice client because the Alexa+ add-on tools are partner-only.</p>
+    <p><a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, CC BY 4.0. PVGIS © European Communities, 2001-2026.</p>
+  </footer>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

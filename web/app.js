@@ -1,0 +1,289 @@
+const state = {
+  token: sessionStorage.getItem("sol-solar-token") || "",
+  sessionId: "",
+  protocolVersion: "2025-11-25",
+  resource: "",
+  clientId: "sol-solar-web",
+  siteId: "",
+  nextId: 1,
+};
+
+const headline = document.querySelector("#headline");
+const rest = document.querySelector("#rest");
+const kicker = document.querySelector("#kicker");
+const charts = document.querySelector("#charts");
+const trace = document.querySelector("#trace");
+const connect = document.querySelector("#connect");
+
+function field(id) {
+  return document.querySelector(id).value.trim();
+}
+
+function numberField(id) {
+  const value = field(id);
+  if (value === "") return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function addTrace(line) {
+  const item = document.createElement("li");
+  item.textContent = line;
+  trace.append(item);
+}
+
+function splitSpoken(spoken) {
+  const parts = spoken.split(/(?<=\.)\s+/);
+  headline.textContent = parts[0] || spoken;
+  rest.textContent = parts.slice(1).join(" ");
+  headline.classList.toggle("is-error", /couldn't|don't|isn't a strong|out of range|Tell me/i.test(spoken));
+}
+
+function siteArgs() {
+  const args = {
+    place: field("#place"),
+    system_kw: numberField("#system"),
+    tilt_degrees: numberField("#tilt"),
+    azimuth_degrees: Number(field("#azimuth")),
+  };
+  const price = numberField("#price");
+  const currency = field("#currency").toUpperCase();
+  if (price !== undefined || currency) {
+    args.price_per_kwh = price;
+    args.currency = currency;
+  }
+  if (state.siteId) args.site_id = state.siteId;
+  return args;
+}
+
+function applianceArgs() {
+  return {
+    ...siteArgs(),
+    appliance_name: field("#appliance"),
+    power_kw: numberField("#power"),
+    duration_hours: numberField("#duration"),
+  };
+}
+
+function validate(kind) {
+  if (!field("#place") || numberField("#system") === undefined) return "Add a city and an array size first.";
+  if ((kind === "wash" || kind === "savings" || kind === "briefing") && (numberField("#power") === undefined || numberField("#duration") === undefined)) {
+    return "Add the appliance power and hours. They are assumptions, not a meter reading.";
+  }
+  const price = numberField("#price");
+  const currency = field("#currency");
+  if ((price === undefined) !== (currency === "")) return "Add both a price and a currency, or leave both empty.";
+  return "";
+}
+
+async function rpc(message) {
+  const headers = {
+    authorization: `Bearer ${state.token}`,
+    "content-type": "application/json",
+    accept: "application/json, text/event-stream",
+  };
+  if (state.sessionId) {
+    headers["mcp-session-id"] = state.sessionId;
+    headers["mcp-protocol-version"] = state.protocolVersion;
+  }
+  const response = await fetch("/mcp", { method: "POST", headers, body: JSON.stringify(message) });
+  const sid = response.headers.get("mcp-session-id");
+  if (sid) state.sessionId = sid;
+  if (response.status === 202) return null;
+  const type = response.headers.get("content-type") || "";
+  const raw = await response.text();
+  if (!response.ok) throw new Error(raw || `HTTP ${response.status}`);
+  if (type.includes("text/event-stream")) {
+    let matched = null;
+    for (const line of raw.split("\n")) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      const parsed = JSON.parse(payload);
+      if (!message.id || parsed.id === message.id) matched = parsed;
+    }
+    if (!matched) throw new Error("The MCP stream did not include a result.");
+    return matched;
+  }
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function ensureSession() {
+  if (state.sessionId) return;
+  const initialized = await rpc({
+    jsonrpc: "2.0",
+    id: state.nextId++,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-11-25",
+      capabilities: {},
+      clientInfo: { name: "sol-solar-web", version: "1.0.0" },
+    },
+  });
+  state.protocolVersion = initialized?.result?.protocolVersion || state.protocolVersion;
+  addTrace(`initialize → protocol ${state.protocolVersion}, transport Streamable HTTP`);
+  await rpc({ jsonrpc: "2.0", method: "notifications/initialized" });
+}
+
+async function callTool(name, args) {
+  await ensureSession();
+  addTrace(`tools/call ${name}`);
+  const message = await rpc({
+    jsonrpc: "2.0",
+    id: state.nextId++,
+    method: "tools/call",
+    params: { name, arguments: args },
+  });
+  if (message?.error) throw new Error(message.error.message || "MCP error");
+  const result = message?.result;
+  if (!result) throw new Error("The tool returned no result.");
+  const spoken = (result.content || []).filter((item) => item.type === "text").map((item) => item.text).join(" ");
+  return { spoken, data: result.structuredContent || {}, isError: Boolean(result.isError) };
+}
+
+function draw(data) {
+  const days = data.days || [];
+  charts.replaceChildren();
+  if (!days.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No hourly forecast in this answer.";
+    charts.append(empty);
+    return;
+  }
+  const peak = Math.max(0.05, ...days.flatMap((day) => day.hours.map((hour) => hour.energy_kwh)));
+  for (const day of days) {
+    const block = document.createElement("div");
+    block.className = "day";
+    const title = document.createElement("p");
+    const label = day.label === "today" ? "Today" : day.label === "tomorrow" ? "Tomorrow" : day.date;
+    title.textContent = `${label} · ${day.total_kwh} kWh expected`;
+    const bars = document.createElement("div");
+    bars.className = "bars";
+    for (const hour of day.hours) {
+      const bar = document.createElement("div");
+      bar.className = hour.in_window ? "bar in-window" : "bar";
+      bar.style.height = `${Math.max(2, (hour.energy_kwh / peak) * 100)}%`;
+      const when = new Intl.DateTimeFormat("en-US", { hour: "numeric", timeZone: data.timezone || "UTC" }).format(new Date(hour.start));
+      bar.title = `${when}: ${hour.energy_kwh} kWh`;
+      bars.append(bar);
+    }
+    const scale = document.createElement("div");
+    scale.className = "hours";
+    const first = day.hours[0];
+    const last = day.hours[day.hours.length - 1];
+    const fmt = (iso) => new Intl.DateTimeFormat("en-US", { hour: "numeric", timeZone: data.timezone || "UTC" }).format(new Date(iso));
+    const startLabel = document.createElement("span");
+    const endLabel = document.createElement("span");
+    startLabel.textContent = fmt(first.start);
+    endLabel.textContent = fmt(last.start);
+    scale.append(startLabel, endLabel);
+    block.append(title, bars, scale);
+    charts.append(block);
+  }
+}
+
+async function ask(kind) {
+  const problem = validate(kind);
+  if (problem) {
+    kicker.textContent = "Need one more detail";
+    headline.textContent = problem;
+    rest.textContent = "";
+    return;
+  }
+  if (!state.token) {
+    kicker.textContent = "Connect first";
+    headline.textContent = "Connect this browser, then ask again.";
+    rest.textContent = "Connection uses OAuth with PKCE, the same shape Alexa+ asks for.";
+    return;
+  }
+  connect.disabled = true;
+  kicker.textContent = "Checking the forecast";
+  headline.textContent = "Looking up the roof…";
+  rest.textContent = "";
+  try {
+    const remembered = await callTool("remember_solar_site", siteArgs());
+    state.siteId = remembered.data.site_id || state.siteId;
+    let result = remembered;
+    if (kind === "wash") result = await callTool("best_time_for_appliance", applianceArgs());
+    if (kind === "forecast") result = await callTool("forecast_pv_production", siteArgs());
+    if (kind === "briefing") result = await callTool("daily_solar_briefing", applianceArgs());
+    if (kind === "savings") result = await callTool("estimate_savings", applianceArgs());
+    const kickers = {
+      "run-today": "Run it today",
+      "wait-tomorrow": "Wait until tomorrow",
+      "partial-today": "Today covers part of it",
+      "partial-tomorrow": "Tomorrow is better",
+      "no-window": "No strong window",
+    };
+    kicker.textContent = kickers[result.data.decision] || "Spoken answer";
+    splitSpoken(result.spoken);
+    if (result.data.timezone === undefined && remembered.data.timezone) result.data.timezone = remembered.data.timezone;
+    draw(result.data.days ? result.data : remembered.data);
+  } catch (error) {
+    kicker.textContent = "The call failed";
+    headline.textContent = "The server did not return an estimate.";
+    rest.textContent = error instanceof Error ? error.message : "Unknown error";
+  } finally {
+    connect.disabled = false;
+  }
+}
+
+async function beginConnect() {
+  const config = await (await fetch("/client-config")).json();
+  state.resource = config.resource;
+  state.clientId = config.clientId;
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const verifier = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  sessionStorage.setItem("sol-solar-verifier", verifier);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  const url = new URL("/authorize", window.location.origin);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", state.clientId);
+  url.searchParams.set("redirect_uri", `${window.location.origin}/`);
+  url.searchParams.set("code_challenge", challenge);
+  url.searchParams.set("code_challenge_method", "S256");
+  url.searchParams.set("resource", state.resource);
+  url.searchParams.set("scope", "solar:read");
+  url.searchParams.set("state", "web");
+  window.location.assign(url.toString());
+}
+
+async function finishConnect() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return;
+  const verifier = sessionStorage.getItem("sol-solar-verifier");
+  const config = await (await fetch("/client-config")).json();
+  const response = await fetch("/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      code_verifier: verifier || "",
+      client_id: config.clientId,
+      redirect_uri: `${window.location.origin}/`,
+      resource: config.resource,
+    }),
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error_description || "Token exchange failed");
+  state.token = json.access_token;
+  sessionStorage.setItem("sol-solar-token", state.token);
+  window.history.replaceState({}, "", "/");
+  connect.textContent = "Connected";
+  addTrace("OAuth 2.1 authorization code + PKCE S256");
+}
+
+connect.addEventListener("click", () => void beginConnect());
+for (const button of document.querySelectorAll("[data-ask]")) {
+  button.addEventListener("click", () => void ask(button.dataset.ask));
+}
+if (state.token) connect.textContent = "Connected";
+finishConnect().catch((error) => {
+  headline.textContent = "The connection did not finish.";
+  rest.textContent = error instanceof Error ? error.message : "Unknown error";
+});
