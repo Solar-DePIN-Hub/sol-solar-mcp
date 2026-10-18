@@ -1,6 +1,6 @@
 # Demo script
 
-The Devpost cut is 1:46, 1280×800, no music, no voice track, no Amazon logo. The picture is a continuous 1280×720 screen capture, and the captions sit in an 80-pixel band under the app so they never cover the form. English captions are burned in and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt), timed to that cut. They are presenter sentences. A short label such as "Night battery check" is fine. The raw tool name stays in the MCP trace, not in the caption. Plain text that names Alexa+ is enough, because the entry is for that track.
+The Devpost cut is 1:31, 1280×888, no music, no voice track, no Amazon logo. The picture is a continuous screen capture in the top 748 pixels, and the captions are a separate band under that picture so they never cover the form or the trace. English captions are burned in and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt), timed to that cut. They are presenter sentences. A short label such as "Night battery check" is fine. The raw tool name stays in the MCP trace, not in the caption. Plain text that names Alexa+ is enough, because the entry is for that track.
 
 The numbers on screen come from the live forecast for Kyiv on 18 October 2026. Do not paste a kilowatt-hour into a later recording if the tool just said a different one.
 
@@ -68,13 +68,13 @@ Scroll back and click "How much will the roof make today and tomorrow?"
 
 Caption: Asked plainly, the roof is about 1.3 kilowatt-hours today, with a brighter day tomorrow.
 
-### 0:57–1:30 The terminal, typed
+### 0:58–1:15 The terminal, typed
 
-Type and run `npm run tools`, then `npm run demo`, then `npm test`. Leave the protocol line, the washing-machine sentence, and `# pass 18` / `# fail 0` on screen as they print.
+Crossfade onto a clean prompt. Type `npm run tools` to the end, then let the list print, and hold it about 3 seconds. Clear, type `npm run demo` to the end, then let the sentence print. Clear, type `npm test` to the end, then let the suite print. Hold `# pass 18` and `# fail 0` about 2 seconds. Do not cut while a command is still being typed.
 
 Caption: The official client lists the tools and agrees on protocol 2025-11-25. A live call from that client answers the washing machine in one sentence. Eighteen tests pass, and none of them call the live forecast.
 
-### 1:30–1:46 Close
+### 1:15–1:31 Close
 
 On-screen text:
 

@@ -41,7 +41,7 @@ Just after 4 AM that morning, the same array was asked about a typed 5 kWh batte
 
 The web page at `/` is the voice client. It speaks the tool text. It does not call a language model.
 
-The Devpost cut is 1:46, 1280×800. The picture is a continuous screen capture of the browser and then the terminal, with short fades between sections. English captions from `docs/DEMO_CAPTIONS.srt` are burned into a band under the app. It opens on power cuts in Ukraine and the battery question, then the washer, the day plan, and the morning briefing, from this same Kyiv morning. The terminal shows `npm run tools`, `npm run demo`, and `npm test` being typed and run. It has no music and no Amazon logo. It is not on YouTube or Vimeo yet.
+The Devpost cut is 1:31, 1280×888. The picture is a continuous screen capture in the top of the frame, with short fades between the browser and the terminal. English captions from `docs/DEMO_CAPTIONS.srt` are burned into a band under the picture, so they do not cover the form or the trace. It opens on power cuts in Ukraine and the battery question, then the washer, the day plan, and the morning briefing, from this same Kyiv morning. The terminal shows `npm run tools`, `npm run demo`, and `npm test` typed in full and then run. It has no music and no Amazon logo. It is not on YouTube or Vimeo yet.
 
 ## How I built it
 
