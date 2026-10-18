@@ -1,0 +1,217 @@
+:root {
+  color-scheme: light;
+  --paper: #f3ecdf;
+  --panel: #fffaf3;
+  --ink: #24190f;
+  --muted: #6d5c4b;
+  --line: #e4d5c2;
+  --accent: #c6531a;
+  --accent-ink: #fff8f3;
+  --good: #1f6b45;
+  --shadow: 0 16px 40px rgba(70, 42, 16, 0.08);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, #ffe1bf 0, transparent 28rem),
+    var(--paper);
+  color: var(--ink);
+}
+
+header, main, footer {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: end;
+  padding: 2rem 0 1rem;
+}
+
+.brand { display: flex; gap: 1rem; align-items: start; }
+
+.sun {
+  width: 3.2rem;
+  height: 3.2rem;
+  margin-top: 0.3rem;
+  border-radius: 50%;
+  background: conic-gradient(from 20deg, #f2b33d, #fff4d2, #e07a2f, #f2b33d);
+  box-shadow: 0 0 0 0.45rem rgba(242, 179, 61, 0.25);
+  flex: none;
+}
+
+.eyebrow {
+  margin: 0;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--accent);
+}
+
+h1 {
+  margin: 0.15rem 0;
+  font-family: Palatino, "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.lede, footer, label { color: var(--muted); }
+
+.lede { margin: 0; max-width: 38rem; line-height: 1.45; }
+
+.status {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 999px;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.status.ready { color: var(--good); }
+.status.bad { color: #9c2f2f; }
+
+main {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 1rem;
+  align-items: start;
+  padding-bottom: 1rem;
+}
+
+.panel, .conversation {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  box-shadow: var(--shadow);
+}
+
+.panel { padding: 1rem; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+input {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 0.7rem;
+  padding: 0.65rem 0.7rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+input:focus {
+  outline: 2px solid #efb07a;
+  border-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+button {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 999px;
+  padding: 0.7rem 0.95rem;
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.55; cursor: wait; }
+
+.conversation { padding: 1rem 1rem 1.2rem; }
+
+h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#transcript {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 8rem;
+}
+
+.bubble {
+  max-width: 95%;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.9rem;
+  line-height: 1.4;
+}
+
+.bubble.user {
+  align-self: end;
+  background: #2b2118;
+  color: #fff8ef;
+}
+
+.bubble.assistant { background: #fff; border: 1px solid var(--line); }
+
+.bubble.error { background: #fff1ee; border: 1px solid #efc2b8; }
+
+.bubble details { margin-top: 0.45rem; }
+.bubble summary { cursor: pointer; color: var(--muted); }
+
+#protocol {
+  margin: 0;
+  max-height: 18rem;
+  overflow: auto;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  background: #24190f;
+  color: #f6e7d4;
+  font-family: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+footer {
+  padding: 0.5rem 0 2rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+a { color: var(--accent); }
+
+@media (max-width: 800px) {
+  header, main { display: block; }
+  .status { display: inline-block; margin-top: 1rem; white-space: normal; }
+  .grid { grid-template-columns: 1fr; }
+  .conversation { margin-top: 1rem; }
+}

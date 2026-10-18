@@ -1,0 +1,29 @@
+1
+00:00:00,000 --> 00:00:04,500
+Sol Solar is connected. Protocol 2025-11-25, five tools.
+Kyiv, 5 kilowatts. Today and tomorrow.
+
+2
+00:00:04,500 --> 00:00:15,000
+About 1.24 kWh still today and 3.71 kWh tomorrow.
+This is an Open-Meteo estimate, not a meter reading.
+
+3
+00:00:15,000 --> 00:00:18,500
+Washing machine, 2000 watts for 2 hours.
+Best remaining window 12:00 to 14:00. Most of the load still comes from the grid.
+
+4
+00:00:18,500 --> 00:00:24,000
+The price typed on screen is 1.00 UAH per kilowatt-hour.
+About 4.94 UAH. You supplied the price. This is not a bill.
+
+5
+00:00:24,000 --> 00:00:36,000
+PVGIS 5.3 typical year: about 5478 kWh.
+Climate for 2005 to 2023, not this week's forecast.
+
+6
+00:00:36,000 --> 00:00:53,650
+The tools/call JSON is the MCP exchange.
+Built in October 2026. Alexa+ account linking is partner-only, so this page is the client.
