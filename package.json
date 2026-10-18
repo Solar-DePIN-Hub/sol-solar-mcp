@@ -1,0 +1,35 @@
+{
+  "name": "sol-solar-mcp",
+  "version": "1.0.0",
+  "description": "Self-hosted MCP server for home and small-node solar questions. Alexa+ track entry for the Amazon Developer Hackathon 2026.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Vadym Bilobrovets",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Solar-DePIN-Hub/sol-solar-mcp"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:live": "node --import tsx --test tests/live.test.ts",
+    "example": "tsx scripts/kyiv-example.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "express": "5.2.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "22.19.0",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

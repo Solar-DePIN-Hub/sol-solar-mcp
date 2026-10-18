@@ -1,0 +1,551 @@
+{
+  "captured_at": "2026-10-17T23:39:52.569Z",
+  "note": "Point-in-time responses from the public Open-Meteo and PVGIS APIs. Forecast numbers change. Re-run npm run example.",
+  "location": {
+    "query": "Kyiv",
+    "best": {
+      "name": "Kyiv",
+      "admin1": "Kyiv City",
+      "country": "Ukraine",
+      "country_code": "UA",
+      "latitude": 50.45466,
+      "longitude": 30.5238,
+      "timezone": "Europe/Kyiv",
+      "elevation_m": 187
+    },
+    "alternatives": [],
+    "attribution": "Weather and geocoding data by Open-Meteo.com (https://open-meteo.com/), CC BY 4.0. Geocoding uses GeoNames."
+  },
+  "location_summary": "The best match for \"Kyiv\" is Kyiv, Kyiv City, Ukraine at 50.45°, 30.52° (Europe/Kyiv).",
+  "forecast_summary": "A 5.00 kW array near Kyiv at 50.45°, 30.52° (tilt 35.0°, facing south) is estimated to produce 1.31 kWh still today (2026-10-18, Europe/Kyiv) and 3.77 kWh tomorrow. The brightest remaining hour is 13:00–14:00 at about 0.23 kWh. This is an Open-Meteo forecast through a simple model, not a meter reading.",
+  "forecast": {
+    "timezone": "Europe/Kyiv",
+    "utc_offset_seconds": 10800,
+    "local_time": "2026-10-18T02:39",
+    "elevation_m": 188,
+    "latitude": 50.423317,
+    "longitude": 30.491209,
+    "place_name": "Kyiv",
+    "temperature_assumed_for_missing_hours": false,
+    "partial_hour_note": "The current clock hour is counted in full, so a mid-hour request slightly overstates energy still to come.",
+    "today": {
+      "date": "2026-10-18",
+      "full_day_kwh": 1.312,
+      "remaining_kwh": 1.312,
+      "brightest_remaining_hour": {
+        "start": "2026-10-18T13:00",
+        "end": "2026-10-18T14:00",
+        "energy_kwh": 0.228,
+        "gti_w_m2": 51,
+        "future": true
+      },
+      "brightest_hour": {
+        "start": "2026-10-18T13:00",
+        "end": "2026-10-18T14:00",
+        "energy_kwh": 0.228,
+        "gti_w_m2": 51,
+        "future": true
+      },
+      "hours": [
+        {
+          "start": "2026-10-18T00:00",
+          "end": "2026-10-18T01:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": false
+        },
+        {
+          "start": "2026-10-18T01:00",
+          "end": "2026-10-18T02:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": false
+        },
+        {
+          "start": "2026-10-18T02:00",
+          "end": "2026-10-18T03:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T03:00",
+          "end": "2026-10-18T04:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T04:00",
+          "end": "2026-10-18T05:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T05:00",
+          "end": "2026-10-18T06:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T06:00",
+          "end": "2026-10-18T07:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T07:00",
+          "end": "2026-10-18T08:00",
+          "energy_kwh": 0.009,
+          "gti_w_m2": 1.9,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T08:00",
+          "end": "2026-10-18T09:00",
+          "energy_kwh": 0.059,
+          "gti_w_m2": 13,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T09:00",
+          "end": "2026-10-18T10:00",
+          "energy_kwh": 0.1,
+          "gti_w_m2": 22.3,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T10:00",
+          "end": "2026-10-18T11:00",
+          "energy_kwh": 0.18,
+          "gti_w_m2": 40.1,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T11:00",
+          "end": "2026-10-18T12:00",
+          "energy_kwh": 0.224,
+          "gti_w_m2": 50.1,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T12:00",
+          "end": "2026-10-18T13:00",
+          "energy_kwh": 0.203,
+          "gti_w_m2": 45.4,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T13:00",
+          "end": "2026-10-18T14:00",
+          "energy_kwh": 0.228,
+          "gti_w_m2": 51,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T14:00",
+          "end": "2026-10-18T15:00",
+          "energy_kwh": 0.104,
+          "gti_w_m2": 23.2,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T15:00",
+          "end": "2026-10-18T16:00",
+          "energy_kwh": 0.096,
+          "gti_w_m2": 21.5,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T16:00",
+          "end": "2026-10-18T17:00",
+          "energy_kwh": 0.089,
+          "gti_w_m2": 19.9,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T17:00",
+          "end": "2026-10-18T18:00",
+          "energy_kwh": 0.021,
+          "gti_w_m2": 4.6,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T18:00",
+          "end": "2026-10-18T19:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T19:00",
+          "end": "2026-10-18T20:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T20:00",
+          "end": "2026-10-18T21:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T21:00",
+          "end": "2026-10-18T22:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T22:00",
+          "end": "2026-10-18T23:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-18T23:00",
+          "end": "2026-10-19T00:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        }
+      ]
+    },
+    "tomorrow": {
+      "date": "2026-10-19",
+      "full_day_kwh": 3.769,
+      "remaining_kwh": 3.769,
+      "brightest_remaining_hour": {
+        "start": "2026-10-19T13:00",
+        "end": "2026-10-19T14:00",
+        "energy_kwh": 0.76,
+        "gti_w_m2": 172.9,
+        "future": true
+      },
+      "brightest_hour": {
+        "start": "2026-10-19T13:00",
+        "end": "2026-10-19T14:00",
+        "energy_kwh": 0.76,
+        "gti_w_m2": 172.9,
+        "future": true
+      },
+      "hours": [
+        {
+          "start": "2026-10-19T00:00",
+          "end": "2026-10-19T01:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T01:00",
+          "end": "2026-10-19T02:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T02:00",
+          "end": "2026-10-19T03:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T03:00",
+          "end": "2026-10-19T04:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T04:00",
+          "end": "2026-10-19T05:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T05:00",
+          "end": "2026-10-19T06:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T06:00",
+          "end": "2026-10-19T07:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T07:00",
+          "end": "2026-10-19T08:00",
+          "energy_kwh": 0.004,
+          "gti_w_m2": 0.9,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T08:00",
+          "end": "2026-10-19T09:00",
+          "energy_kwh": 0.033,
+          "gti_w_m2": 7.4,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T09:00",
+          "end": "2026-10-19T10:00",
+          "energy_kwh": 0.075,
+          "gti_w_m2": 16.7,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T10:00",
+          "end": "2026-10-19T11:00",
+          "energy_kwh": 0.134,
+          "gti_w_m2": 29.9,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T11:00",
+          "end": "2026-10-19T12:00",
+          "energy_kwh": 0.192,
+          "gti_w_m2": 42.7,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T12:00",
+          "end": "2026-10-19T13:00",
+          "energy_kwh": 0.578,
+          "gti_w_m2": 130.8,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T13:00",
+          "end": "2026-10-19T14:00",
+          "energy_kwh": 0.76,
+          "gti_w_m2": 172.9,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T14:00",
+          "end": "2026-10-19T15:00",
+          "energy_kwh": 0.713,
+          "gti_w_m2": 161.9,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T15:00",
+          "end": "2026-10-19T16:00",
+          "energy_kwh": 0.586,
+          "gti_w_m2": 132.7,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T16:00",
+          "end": "2026-10-19T17:00",
+          "energy_kwh": 0.564,
+          "gti_w_m2": 127.4,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T17:00",
+          "end": "2026-10-19T18:00",
+          "energy_kwh": 0.129,
+          "gti_w_m2": 28.8,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T18:00",
+          "end": "2026-10-19T19:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T19:00",
+          "end": "2026-10-19T20:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T20:00",
+          "end": "2026-10-19T21:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T21:00",
+          "end": "2026-10-19T22:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T22:00",
+          "end": "2026-10-19T23:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        },
+        {
+          "start": "2026-10-19T23:00",
+          "end": "2026-10-20T00:00",
+          "energy_kwh": 0,
+          "gti_w_m2": 0,
+          "future": true
+        }
+      ]
+    },
+    "assumptions": {
+      "peak_power_kw": 5,
+      "meaning": "peak_power_kw is nameplate DC kilowatts (kWp), the same quantity PVGIS calls peak power.",
+      "tilt_degrees": 35,
+      "tilt_defaulted": false,
+      "azimuth_degrees": 0,
+      "azimuth_defaulted": false,
+      "azimuth_convention": "0° south, -90° east, 90° west, ±180° north. Shared by Open-Meteo and PVGIS.",
+      "system_loss_percent": 14,
+      "system_loss_meaning": "Inverter, cables, and soiling. Temperature is applied separately and is not inside this percentage.",
+      "temperature_coefficient_per_c": -0.004,
+      "cell_temperature": "Tcell = Tair + 0.03125 * GTI, from a 45°C NOCT linear approximation. Not a measured module temperature.",
+      "irradiance": "Open-Meteo global_tilted_irradiance is the preceding-hour mean in W/m², fixed albedo 0.2, isotropic sky.",
+      "energy_identity": "Hourly kWh equals the estimated average kW during that one-hour interval.",
+      "model_boundary": "The short-term forecast uses this local model. typical_monthly_yield returns PVGIS's own model and will not match these hourly numbers."
+    },
+    "attribution": "Weather and geocoding data by Open-Meteo.com (https://open-meteo.com/), CC BY 4.0. Geocoding uses GeoNames.",
+    "request_url": "https://api.open-meteo.com/v1/forecast?latitude=50.45466&longitude=30.5238&hourly=temperature_2m%2Cglobal_tilted_irradiance&timezone=auto&forecast_days=3&tilt=35&azimuth=0"
+  },
+  "typical_year_summary": "PVGIS 5.3 estimates about 5570 kWh per year (15.26 kWh per day on average) for this 5.00 kW array, using PVGIS-SARAH3 and ERA5 for 2005–2023. The highest typical month is July at 707 kWh, and the lowest is December at 139 kWh. This is a long-term climate figure, not a forecast for this year.",
+  "typical_year": {
+    "source": "PVGIS 5.3 PVcalc",
+    "radiation_database": "PVGIS-SARAH3",
+    "meteo_database": "ERA5",
+    "year_min": 2005,
+    "year_max": 2023,
+    "elevation_m": 180,
+    "technology": "c-Si",
+    "mounting": "free-standing",
+    "peak_power_kw": 5,
+    "system_loss_percent": 14,
+    "tilt_degrees": 35,
+    "azimuth_degrees": 0,
+    "tilt_defaulted": false,
+    "azimuth_defaulted": false,
+    "yearly_energy_kwh": 5570.19,
+    "average_daily_energy_kwh": 15.26,
+    "average_monthly_energy_kwh": 464.18,
+    "yearly_plane_irradiation_kwh_m2": 1396.46,
+    "yearly_std_dev_kwh": 241.58,
+    "months": [
+      {
+        "month": 1,
+        "name": "January",
+        "energy_per_day_kwh": 5.81,
+        "energy_per_month_kwh": 180.2,
+        "plane_irradiation_per_day_kwh_m2": 1.32,
+        "std_dev_kwh": 29.54
+      },
+      {
+        "month": 2,
+        "name": "February",
+        "energy_per_day_kwh": 9.9,
+        "energy_per_month_kwh": 277.24,
+        "plane_irradiation_per_day_kwh_m2": 2.26,
+        "std_dev_kwh": 58.01
+      },
+      {
+        "month": 3,
+        "name": "March",
+        "energy_per_day_kwh": 15.29,
+        "energy_per_month_kwh": 473.87,
+        "plane_irradiation_per_day_kwh_m2": 3.6,
+        "std_dev_kwh": 95.88
+      },
+      {
+        "month": 4,
+        "name": "April",
+        "energy_per_day_kwh": 19.8,
+        "energy_per_month_kwh": 593.89,
+        "plane_irradiation_per_day_kwh_m2": 4.91,
+        "std_dev_kwh": 101.65
+      },
+      {
+        "month": 5,
+        "name": "May",
+        "energy_per_day_kwh": 22.07,
+        "energy_per_month_kwh": 684.23,
+        "plane_irradiation_per_day_kwh_m2": 5.67,
+        "std_dev_kwh": 73.62
+      },
+      {
+        "month": 6,
+        "name": "June",
+        "energy_per_day_kwh": 23.47,
+        "energy_per_month_kwh": 704.24,
+        "plane_irradiation_per_day_kwh_m2": 6.14,
+        "std_dev_kwh": 34.84
+      },
+      {
+        "month": 7,
+        "name": "July",
+        "energy_per_day_kwh": 22.81,
+        "energy_per_month_kwh": 707.23,
+        "plane_irradiation_per_day_kwh_m2": 5.98,
+        "std_dev_kwh": 40.52
+      },
+      {
+        "month": 8,
+        "name": "August",
+        "energy_per_day_kwh": 21.95,
+        "energy_per_month_kwh": 680.35,
+        "plane_irradiation_per_day_kwh_m2": 5.75,
+        "std_dev_kwh": 58.21
+      },
+      {
+        "month": 9,
+        "name": "September",
+        "energy_per_day_kwh": 18.6,
+        "energy_per_month_kwh": 557.91,
+        "plane_irradiation_per_day_kwh_m2": 4.67,
+        "std_dev_kwh": 99.81
+      },
+      {
+        "month": 10,
+        "name": "October",
+        "energy_per_day_kwh": 12.78,
+        "energy_per_month_kwh": 396.31,
+        "plane_irradiation_per_day_kwh_m2": 3.08,
+        "std_dev_kwh": 88.82
+      },
+      {
+        "month": 11,
+        "name": "November",
+        "energy_per_day_kwh": 5.87,
+        "energy_per_month_kwh": 176.09,
+        "plane_irradiation_per_day_kwh_m2": 1.39,
+        "std_dev_kwh": 38.79
+      },
+      {
+        "month": 12,
+        "name": "December",
+        "energy_per_day_kwh": 4.47,
+        "energy_per_month_kwh": 138.64,
+        "plane_irradiation_per_day_kwh_m2": 1.05,
+        "std_dev_kwh": 36.03
+      }
+    ],
+    "disclaimer": "Climatology for a typical year in the stated database period. Not a forecast for the current month and not a meter reading.",
+    "attribution": "PVGIS © European Union, Joint Research Centre, reused with no licence restriction stated by JRC. Not an official Commission forecast.",
+    "request_url": "https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?lat=50.45466&lon=30.5238&peakpower=5&loss=14&angle=35&aspect=0&pvtechchoice=crystSi&mountingplace=free&outputformat=json&browser=0"
+  }
+}
