@@ -8,6 +8,10 @@ On 18 October 2026, for a 5 kW array in Kyiv tilted 35 degrees and facing south,
 
 The 0.7 kW and 2 hours are inputs, not a measurement of a machine. The 6 UAH price used in the savings example below was typed for the demo. It is not a tariff lookup. Forecasts change. Run `npm run demo` for the current day.
 
+The browser client, after OAuth PKCE, on that same day:
+
+![Wait until tomorrow. A 5 kW array in Kyiv, 18 October 2026. The gold bars are the recommended window.](docs/images/sol-solar-wash.jpg)
+
 Author: Vadym Bilobrovets, solo, Ukraine. The repository was created on 17 October 2026. This server was written during the hackathon submission window.
 
 ## Quick start

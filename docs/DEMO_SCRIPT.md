@@ -6,6 +6,8 @@ Record the screen with English captions. Do not record a voice track. Do not use
 
 The numbers on screen come from the live forecast. Do not paste a kilowatt-hour into the video if the tool just said a different one. The sample in the README was captured on 18 October 2026 and will not match a later day.
 
+A local screen recording of the browser half was captured that day: connect, the washing-machine question, a typed price of 6 UAH, and the MCP trace showing protocol 2025-11-25. That file is not the Devpost video. Upload a captioned cut, under 3 minutes, to YouTube or Vimeo. No music. No Amazon logo.
+
 ## Setup before you hit record
 
 1. `npm install` and `npm run dev`.
