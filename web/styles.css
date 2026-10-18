@@ -67,6 +67,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .ask { padding: 18px 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .chips button { text-align: left; }
+.chips button.is-active {
+  background: var(--sun);
+  color: var(--soil);
+  border-color: var(--sun);
+}
 .stage {
   display: grid;
   grid-template-columns: 1.3fr 0.9fr;

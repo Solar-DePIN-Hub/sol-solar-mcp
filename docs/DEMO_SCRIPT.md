@@ -1,6 +1,6 @@
 # Demo script
 
-The Devpost cut is 2:02, 1280×720, no music, no voice track, no Amazon logo. English captions are burned in and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt), timed to that cut. Plain text that names Alexa+ is enough, because the entry is for that track.
+The Devpost cut is 1:46, 1280×800, no music, no voice track, no Amazon logo. The picture is a continuous 1280×720 screen capture, and the captions sit in an 80-pixel band under the app so they never cover the form. English captions are burned in and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt), timed to that cut. They are presenter sentences. A short label such as "Night battery check" is fine. The raw tool name stays in the MCP trace, not in the caption. Plain text that names Alexa+ is enough, because the entry is for that track.
 
 The numbers on screen come from the live forecast for Kyiv on 18 October 2026. Do not paste a kilowatt-hour into a later recording if the tool just said a different one.
 
@@ -15,71 +15,75 @@ Upload the captioned file to YouTube or Vimeo. This repository does not contain 
 
 ## Shot list
 
-### 0:00–0:08 Title
+Record one continuous browser pass, then one continuous terminal pass. Crossfade between cards and those takes. Keep the mouse cursor visible. The clicked question stays gold until the next click. If the dev server restarts, sign in again before the first question. A restart during the take invalidates the bearer token.
+
+### 0:00–0:05 Title
 
 On-screen text:
 
-Sol Solar — a solar-aware MCP server for Alexa+
+Power cuts are ordinary in Ukraine.
+Will my battery last the night?
 
-Caption: Sol Solar answers a household before sunrise. Will the battery last the night?
+Caption: Power cuts are an ordinary night in Ukraine. Will the battery last until sunrise?
 
-### 0:08–0:16 The roof you typed
+### 0:05–0:14 The roof you typed
 
-Show the form, including the line that says battery size, charge, household load, and price are assumptions you type.
+Type the battery size, the charge, and the household load. Click Connect, then Allow on the consent page. Click the night-battery question and leave "Looking up the roof…" on screen.
 
-Caption: Kyiv, a 5 kilowatt array, tilt 35, facing south. Battery size, charge, and house load are typed. Nothing is read from a meter.
+Caption: A five kilowatt roof in Kyiv. Battery size, charge, and household load are typed, not read from a meter. The browser signs in with OAuth, the same shape Alexa+ asks for. Sol checks the forecast before it answers.
 
-### 0:16–0:33 Will the battery last?
+### 0:14–0:20 Will the battery last?
 
-Click "Will my battery last through tonight?" Leave the spoken sentence on screen. On this morning the answer was yes until sunrise, and the day's roof was not enough to refill the battery.
+The night-battery chip is gold. On this morning the answer was yes until sunrise, and the day's roof was not enough to refill the battery.
 
-Caption: battery_through_the_night. The battery should last until sunrise. The forecast sun is not enough to refill it. Today is about 1.3 kilowatt-hours.
+Caption: Night battery check. Yes. That charge should last until sunrise, and this dim day does not refill it.
 
-### 0:33–0:47 The washing machine
+### 0:20–0:26 The washing machine
 
 Click "When should I run the washing machine today?"
 
-Caption: best_time_for_appliance. Wait until tomorrow. Run the washing machine from 1 PM to 3 PM. That 0.7 kilowatt wash is about 1.4 kilowatt-hours.
+Caption: The washing machine waits until tomorrow, from 1 to 3 in the afternoon, when the roof can cover it.
 
-### 0:47–1:01 The day plan
+### 0:26–0:32 The day plan
 
-Click "Plan the dishwasher, the washer, and the car." Only the washer fits. The dishwasher and the car charging would ask an hour for more than the forecast shows.
+Click "Plan the dishwasher, the washer, and the car." Only the washer fits.
 
-Caption: plan_the_solar_day. The washer fits tomorrow. The dishwasher and the car charging do not. An hour is shared only when the roof can cover both.
+Caption: Day plan. The washer fits that window. The dishwasher and the car charging do not.
 
-### 1:01–1:15 Morning briefing
+### 0:32–0:44 Morning briefing
 
 Click "Good morning. When is the solar window?" The strongest stretch is thin, so the sentence does not say to run heavy loads.
 
-Caption: daily_solar_briefing. The strongest stretch today is 1 PM to 4 PM, about 0.6 kilowatt-hours. That is a thin window for heavy loads.
+Caption: Morning briefing. The strongest stretch today is 1 to 4 in the afternoon, and it is too thin for heavy loads.
 
-### 1:15–1:26 MCP trace
+### 0:44–0:49 MCP trace
 
-Open "MCP trace" and hold on `initialize` with protocol 2025-11-25 and the `tools/call` lines.
+Scroll to "MCP trace" and open it. Hold on protocol 2025-11-25 and the tool-call lines.
 
-Caption: The browser is an MCP client. initialize negotiates protocol 2025-11-25 over Streamable HTTP. The sentence is the tool's text.
+Caption: The trace under the page is the MCP conversation. Protocol 2025-11-25, over Streamable HTTP.
 
-### 1:26–1:38 Tools
+### 0:49–0:57 Today's roof
 
-In the terminal, run `npm run tools`. Hold on Protocol 2025-11-25 and the seven tool names.
+Scroll back and click "How much will the roof make today and tomorrow?"
 
-Caption: tools/list from the official MCP client. Protocol 2025-11-25. Seven tools, including the night-battery check and the day plan.
+Caption: Asked plainly, the roof is about 1.3 kilowatt-hours today, with a brighter day tomorrow.
 
-### 1:38–1:52 Tests
+### 0:57–1:30 The terminal, typed
 
-Run `npm test`. Hold on `# pass 18` and `# fail 0`.
+Type and run `npm run tools`, then `npm run demo`, then `npm test`. Leave the protocol line, the washing-machine sentence, and `# pass 18` / `# fail 0` on screen as they print.
 
-Caption: npm test. 18 tests pass and 0 fail. The suite stays offline. It does not call the live forecast.
+Caption: The official client lists the tools and agrees on protocol 2025-11-25. A live call from that client answers the washing machine in one sentence. Eighteen tests pass, and none of them call the live forecast.
 
-### 1:52–2:02 Close
+### 1:30–1:46 Close
 
 On-screen text:
 
-Self-hosted MCP server
+Sol Solar
+https://github.com/Solar-DePIN-Hub/sol-solar-mcp
 Open-Meteo and PVGIS
-October 2026 · Vadym Bilobrovets
-Alexa+ linking needs the partner preview.
-This demo is the MCP client the FAQ accepts.
+Vadym Bilobrovets, October 2026
+
+Caption: The project is public on GitHub. Open-Meteo and PVGIS. Built by Vadym Bilobrovets.
 
 ## What not to claim on camera
 

@@ -308,7 +308,11 @@ async function finishConnect() {
 
 connect.addEventListener("click", () => void beginConnect());
 for (const button of document.querySelectorAll("[data-ask]")) {
-  button.addEventListener("click", () => void ask(button.dataset.ask));
+  button.addEventListener("click", () => {
+    for (const other of document.querySelectorAll("[data-ask]")) other.classList.remove("is-active");
+    button.classList.add("is-active");
+    void ask(button.dataset.ask);
+  });
 }
 if (state.token) connect.textContent = "Connected";
 finishConnect().catch((error) => {
