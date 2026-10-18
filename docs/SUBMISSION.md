@@ -41,6 +41,8 @@ Just after 4 AM that morning, the same array was asked about a typed 5 kWh batte
 
 The web page at `/` is the voice client. It speaks the tool text. It does not call a language model.
 
+The Devpost cut is 2:02, 1280×720, with the English captions in `docs/DEMO_CAPTIONS.srt` burned in. It opens on the battery question, then the washer, the day plan, and the morning briefing, from this same Kyiv morning. It has no music and no Amazon logo. It is not on YouTube or Vimeo yet.
+
 ## How I built it
 
 - TypeScript, Node.js 22, Express, Zod, and `@modelcontextprotocol/sdk` 1.32.1.
@@ -62,7 +64,7 @@ Open-Meteo's free API is non-commercial. That fits a hackathon and home automati
 
 ## Accomplishments
 
-- Five tools with spoken answers, input validation, and tests.
+- Seven tools with spoken answers, input validation, and tests, including a multi-appliance day plan, a night-battery check, and a morning briefing.
 - A live answer for Kyiv that uses both a forecast and a typical year, and that recommends waiting when today is too dark.
 - Session memory, so a follow-up does not have to repeat the city.
 - An OAuth surface that matches the published Alexa+ checklist, exercised by the tests.
@@ -92,7 +94,7 @@ Open-Meteo's free API is non-commercial. That fits a hackathon and home automati
 - `@modelcontextprotocol/sdk` 1.32.1: the server, the demo client, and the tests. Streamable HTTP, tool registration, and the protocol negotiation that landed on `2025-11-25`.
 - MCP specification 2025-11-25, including the origin check guidance for Streamable HTTP.
 - Alexa+ MCP QuickStart: the auth checklist and the add-on onboarding steps. I implemented the checklist. I could not run the CLI.
-- Open-Meteo forecast and geocoding APIs: irradiance, temperature, sunrise and sunset, and place resolution.
+- Open-Meteo forecast and geocoding APIs: irradiance, temperature, cloud cover, sunrise and sunset, and place resolution.
 - PVGIS 5.3 `PVcalc`: typical-year yield and, when tilt is omitted, a suggested fixed tilt.
 - Express and Zod: HTTP, validation, and the tool schemas.
 - Docker: the container image.

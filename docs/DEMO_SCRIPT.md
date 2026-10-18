@@ -1,75 +1,88 @@
 # Demo script
 
-Target length: about 2 minutes 30 seconds. Hard limit: 3 minutes. Judges are not asked to watch past that.
+The Devpost cut is 2:02, 1280×720, no music, no voice track, no Amazon logo. English captions are burned in and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt), timed to that cut. Plain text that names Alexa+ is enough, because the entry is for that track.
 
-Record the screen with English captions. Do not record a voice track. Do not use music. Do not show the Amazon logo or other brand artwork. Plain text that names Alexa+ is enough, because the entry is for that track. The captions below are also in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt).
+The numbers on screen come from the live forecast for Kyiv on 18 October 2026. Do not paste a kilowatt-hour into a later recording if the tool just said a different one.
 
-The numbers on screen come from the live forecast. Do not paste a kilowatt-hour into the video if the tool just said a different one. The sample in the README was captured on 18 October 2026 and will not match a later day.
-
-A local screen recording of the browser half was captured that day: connect, the washing-machine question, a typed price of 6 UAH, and the MCP trace showing protocol 2025-11-25. That file is not the Devpost video. Upload a captioned cut, under 3 minutes, to YouTube or Vimeo. No music. No Amazon logo.
+Upload the captioned file to YouTube or Vimeo. This repository does not contain that URL.
 
 ## Setup before you hit record
 
 1. `npm install` and `npm run dev`.
 2. Open http://127.0.0.1:8787/ in a clean window.
-3. Confirm the form shows Kyiv, 5 kW, tilt 35, facing south, appliance "washing machine", power 0.7, hours 2. Leave price empty for the first question.
-4. Optional second terminal, not yet running: `npm run demo`.
+3. Confirm the form shows Kyiv, 5 kW, tilt 35, facing south, appliance "washing machine", power 0.7, hours 2. Battery 5 kWh, charge 40, house load 0.3 kW. Leave price empty.
+4. A second terminal, for the tools list and `npm test`.
 
 ## Shot list
 
-### 0:00–0:10 Title
+### 0:00–0:08 Title
 
-On-screen text, large:
+On-screen text:
 
 Sol Solar — a solar-aware MCP server for Alexa+
 
-Caption: Sol Solar answers one household question. Will the battery last the night, and when should I run the washing machine?
+Caption: Sol Solar answers a household before sunrise. Will the battery last the night?
 
-The final captions are burned into the demo video and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt). Time the cues to the cut you upload. The outage question opens the browser section, because that is the sentence a dim morning in Kyiv actually produced.
+### 0:08–0:16 The roof you typed
 
-### 0:12–0:28 The roof you typed
+Show the form, including the line that says battery size, charge, household load, and price are assumptions you type.
 
-Show the form. Point, with the cursor, at place, array size, tilt, and the line that says power and price are assumptions you type.
+Caption: Kyiv, a 5 kilowatt array, tilt 35, facing south. Battery size, charge, and house load are typed. Nothing is read from a meter.
 
-Caption: This roof is a 5 kilowatt array in Kyiv, tilted 35 degrees and facing south. The wash is an assumption: 0.7 kilowatts for 2 hours. Nothing here is read from a meter.
+### 0:16–0:33 Will the battery last?
 
-### 0:28–0:42 Connect
+Click "Will my battery last through tonight?" Leave the spoken sentence on screen. On this morning the answer was yes until sunrise, and the day's roof was not enough to refill the battery.
 
-Click "Connect this browser". On the consent page, click Allow. Back on the main page, open "MCP trace" long enough to see OAuth PKCE and `initialize` with protocol 2025-11-25.
+Caption: battery_through_the_night. The battery should last until sunrise. The forecast sun is not enough to refill it. Today is about 1.3 kilowatt-hours.
 
-Caption: The browser connects with OAuth PKCE, then speaks MCP over Streamable HTTP. The negotiated protocol is 2025-11-25.
+### 0:33–0:47 The washing machine
 
-### 0:42–1:25 The question
+Click "When should I run the washing machine today?"
 
-Click "When should I run the washing machine today?" Wait until the spoken sentence and the chart appear. Leave the sentence on screen. Do not scroll it away. If the chart highlights a window, rest the cursor there.
+Caption: best_time_for_appliance. Wait until tomorrow. Run the washing machine from 1 PM to 3 PM. That 0.7 kilowatt wash is about 1.4 kilowatt-hours.
 
-Caption: The page calls the tool best_time_for_appliance. The sentence on screen is the tool's text. A language model is not writing the kilowatt-hours. Today is compared with tomorrow, and with a typical day from PVGIS.
+### 0:47–1:01 The day plan
 
-### 1:25–1:45 A price you typed
+Click "Plan the dishwasher, the washer, and the car." Only the washer fits. The dishwasher and the car charging would ask an hour for more than the forecast shows.
 
-Type `6` in price and `UAH` in currency. Click "What do I save against a 7 PM start?"
+Caption: plan_the_solar_day. The washer fits tomorrow. The dishwasher and the car charging do not. An hour is shared only when the roof can cover both.
 
-Caption: Money appears only after a price is typed. Six hryvnia per kilowatt-hour is an example for this demo. It is not a tariff lookup, and it is not a bill.
+### 1:01–1:15 Morning briefing
 
-### 1:45–2:10 The same call from the terminal
+Click "Good morning. When is the solar window?" The strongest stretch is thin, so the sentence does not say to run heavy loads.
 
-Switch to the terminal. Run `npm run demo`. Hold on the lines `Protocol: 2025-11-25` and the spoken washing-machine answer.
+Caption: daily_solar_briefing. The strongest stretch today is 1 PM to 4 PM, about 0.6 kilowatt-hours. That is a thin window for heavy loads.
 
-Caption: The same server, called by the official MCP client. Protocol 2025-11-25. Streamable HTTP. The sentence matches the page.
+### 1:15–1:26 MCP trace
 
-### 2:10–2:30 Close
+Open "MCP trace" and hold on `initialize` with protocol 2025-11-25 and the `tools/call` lines.
+
+Caption: The browser is an MCP client. initialize negotiates protocol 2025-11-25 over Streamable HTTP. The sentence is the tool's text.
+
+### 1:26–1:38 Tools
+
+In the terminal, run `npm run tools`. Hold on Protocol 2025-11-25 and the seven tool names.
+
+Caption: tools/list from the official MCP client. Protocol 2025-11-25. Seven tools, including the night-battery check and the day plan.
+
+### 1:38–1:52 Tests
+
+Run `npm test`. Hold on `# pass 18` and `# fail 0`.
+
+Caption: npm test. 18 tests pass and 0 fail. The suite stays offline. It does not call the live forecast.
+
+### 1:52–2:02 Close
 
 On-screen text:
 
 Self-hosted MCP server
 Open-Meteo and PVGIS
-Built October 2026 by Vadym Bilobrovets
-Alexa+ account linking needs the partner preview. This demo is the MCP client the hackathon FAQ asks for.
-
-Caption: Sol Solar is a self-hosted MCP server. It uses Open-Meteo and PVGIS. Built in October 2026 by Vadym Bilobrovets. Linking it to Alexa+ needs the partner preview, so this video shows the MCP client the hackathon FAQ accepts.
+October 2026 · Vadym Bilobrovets
+Alexa+ linking needs the partner preview.
+This demo is the MCP client the FAQ accepts.
 
 ## What not to claim on camera
 
 - Do not say the figure is today's measured production.
-- Do not say 6 UAH is the household's tariff.
-- Do not say the project reads a Solar DePin inverter. It does not.
+- Do not say a typed price is the household's tariff.
+- Do not say the project reads a battery or a Solar DePin inverter. It does not.

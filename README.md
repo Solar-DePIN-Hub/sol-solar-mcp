@@ -39,7 +39,7 @@ flowchart LR
   person[Person] --> client[Voice client]
   client -->|"Streamable HTTP, MCP 2025-11-25"| mcp[Sol Solar]
   mcp --> auth[OAuth 2.1 PKCE S256]
-  mcp --> tools[Five tools]
+  mcp --> tools[Seven tools]
   tools --> meteo[Open-Meteo forecast and geocoding]
   tools --> pvgis[PVGIS 5.3 typical year]
   tools --> model[Yield model and appliance window]

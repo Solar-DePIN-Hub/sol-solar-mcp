@@ -1,27 +1,39 @@
 1
-00:00:00,000 --> 00:00:12,000
-Sol Solar answers one household question. When should I run the washing machine today?
+00:00:00,000 --> 00:00:08,000
+Sol Solar answers a household before sunrise. Will the battery last the night?
 
 2
-00:00:12,000 --> 00:00:28,000
-This roof is a 5 kilowatt array in Kyiv, tilted 35 degrees and facing south. The wash is an assumption: 0.7 kilowatts for 2 hours. Nothing here is read from a meter.
+00:00:08,000 --> 00:00:16,000
+Kyiv, a 5 kilowatt array, tilt 35, facing south. Battery size, charge, and house load are typed. Nothing is read from a meter.
 
 3
-00:00:28,000 --> 00:00:42,000
-The browser connects with OAuth PKCE, then speaks MCP over Streamable HTTP. The negotiated protocol is 2025-11-25.
+00:00:16,000 --> 00:00:33,042
+battery_through_the_night. The battery should last until sunrise. The forecast sun is not enough to refill it. Today is about 1.3 kilowatt-hours.
 
 4
-00:00:42,000 --> 00:01:25,000
-The page calls the tool best_time_for_appliance. The sentence on screen is the tool's text. A language model is not writing the kilowatt-hours. Today is compared with tomorrow, and with a typical day from PVGIS.
+00:00:33,042 --> 00:00:47,083
+best_time_for_appliance. Wait until tomorrow. Run the washing machine from 1 PM to 3 PM. That 0.7 kilowatt wash is about 1.4 kilowatt-hours.
 
 5
-00:01:25,000 --> 00:01:45,000
-Money appears only after a price is typed. Six hryvnia per kilowatt-hour is an example for this demo. It is not a tariff lookup, and it is not a bill.
+00:00:47,083 --> 00:01:01,083
+plan_the_solar_day. The washer fits tomorrow. The dishwasher and the car charging do not. An hour is shared only when the roof can cover both.
 
 6
-00:01:45,000 --> 00:02:10,000
-The same server, called by the official MCP client. Protocol 2025-11-25. Streamable HTTP. The sentence matches the page.
+00:01:01,083 --> 00:01:15,083
+daily_solar_briefing. The strongest stretch today is 1 PM to 4 PM, about 0.6 kilowatt-hours. That is a thin window for heavy loads.
 
 7
-00:02:10,000 --> 00:02:30,000
-Sol Solar is a self-hosted MCP server. It uses Open-Meteo and PVGIS. Built in October 2026 by Vadym Bilobrovets. Linking it to Alexa+ needs the partner preview, so this video shows the MCP client the hackathon FAQ accepts.
+00:01:15,083 --> 00:01:26,083
+The browser is an MCP client. initialize negotiates protocol 2025-11-25 over Streamable HTTP. The sentence is the tool's text.
+
+8
+00:01:26,083 --> 00:01:38,083
+tools/list from the official MCP client. Protocol 2025-11-25. Seven tools, including the night-battery check and the day plan.
+
+9
+00:01:38,083 --> 00:01:52,083
+npm test. 18 tests pass and 0 fail. The suite stays offline. It does not call the live forecast.
+
+10
+00:01:52,083 --> 00:02:02,083
+Open-Meteo and PVGIS. October 2026, Vadym Bilobrovets. Alexa+ linking needs the partner preview. This is the MCP client the FAQ accepts.
