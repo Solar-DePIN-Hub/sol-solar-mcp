@@ -59,7 +59,9 @@ The server imports and uses `@modelcontextprotocol/sdk` (`McpServer`, `Streamabl
 | `forecast_pv_production` | "How much solar should I expect today and tomorrow?" | Hourly forecast, plus a PVGIS typical day for this month. |
 | `best_time_for_appliance` | "When should I run the washing machine?" | Finds the best future window. Usable solar in an hour is capped at the appliance's power. |
 | `estimate_savings` | "What do I save against 7 PM?" | Grid kilowatt-hours avoided. Money only if you typed a price. |
-| `daily_solar_briefing` | "How does the roof look today?" | One spoken briefing, with the appliance included when you pass one. |
+| `daily_solar_briefing` | "Good morning. When is the solar window?" | Leads with the strongest stretch. If that stretch is thin, it says so. Names a cloudy run when Open-Meteo cloud cover supports one. |
+| `plan_the_solar_day` | "Plan the dishwasher, the washer, and the car." | Places several loads. Two share an hour only when their combined power fits under that hour's forecast. |
+| `battery_through_the_night` | "Will my battery last through tonight?" | Uses a capacity, charge, and household load you type. Says if that charge reaches sunrise, and whether the forecast can refill the battery. |
 
 A prompt, `answer_solar_question`, tells a client to say the tool text and not invent numbers.
 
@@ -84,6 +86,20 @@ Captured with `npm run demo -- --price 6 --currency UAH` while Kyiv's local date
 `estimate_savings`, with the typed example price of 6 UAH per kilowatt-hour:
 
 > Shifting the washing machine into the solar window avoids about 1.4 kilowatt-hours of grid electricity compared with a 7 PM start. At 6 hryvnia per kilowatt-hour, that is about 8.40 hryvnia. That uses the price you typed. It is not a tariff lookup. This assumes the sunlight in that window is free for this appliance. This is a model estimate, not a measurement from your inverter.
+
+The same morning, about 4:01 AM in Kyiv, with a battery and a load that were typed for the question (5 kWh, 40 percent, 0.3 kW household load):
+
+`battery_through_the_night`:
+
+> Yes. The battery should last through that night. At 40 percent, a 5 kilowatt-hour battery holds about 2 kilowatt-hours. A 0.3 kilowatt load from 4:01 AM to 7:25 AM needs about 1 kilowatt-hour. The forecast sun is not enough to refill it. That day's roof is expected to make about 1.3 kilowatt-hours. You typed the battery size, the charge, and the household load. They are not read from a battery. This is a model estimate, not a measurement from your inverter.
+
+`plan_the_solar_day`, for a 1 kW dishwasher for 1 hour, the 0.7 kW washer for 2 hours, and 1.4 kW car charging for 3 hours:
+
+> Wait until tomorrow. Run the washing machine from 1 PM to 3 PM. I can't cover the dishwasher or the car charging from the roof without asking an hour for more than it is forecast to make.
+
+`daily_solar_briefing`:
+
+> The strongest stretch today is from 1 PM to 4 PM, about 0.6 kilowatt-hours. That is a thin window for heavy loads. Good morning.
 
 Alexa+ asks for a round trip under 500 ms. The cold call above took 869 ms. The cached forecast took 35 ms. See the friction log in [docs/SUBMISSION.md](docs/SUBMISSION.md).
 

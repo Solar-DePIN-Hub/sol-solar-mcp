@@ -2,11 +2,18 @@
 
 Paste the sections below into the Amazon Developer Hackathon 2026 form. The project was built in October 2026. The repository did not exist before 17 October 2026.
 
-- Primary track: Alexa+
-- Mini-challenges: Open Source, AWS Builder
-- Author: Vadym Bilobrovets, solo, Ukraine
-- Repository: https://github.com/Solar-DePIN-Hub/sol-solar-mcp
-- GitHub username for the open-source fields: `Solar-DePIN-Hub` (the account that owns this new repository). The author's personal profile is https://github.com/mcBanCh.
+## Paste these fields
+
+- **Project name:** Sol Solar
+- **Tagline:** Ask if the battery lasts the night, or when to run the washing machine. A spoken answer from today's solar forecast.
+- **Built with:** Node.js, TypeScript, Model Context Protocol, Express, Zod, Open-Meteo, PVGIS, Docker, AWS Lambda, Amazon DynamoDB
+- **Repository URL:** https://github.com/Solar-DePIN-Hub/sol-solar-mcp
+- **Primary track:** Alexa+
+- **Mini-challenges:** Open Source, AWS Builder
+- **Author:** Vadym Bilobrovets, solo, Ukraine
+- **GitHub username:** `Solar-DePIN-Hub` (the account that owns this repository). Personal profile: https://github.com/mcBanCh
+
+The tagline is 116 characters.
 
 ## Inspiration
 
@@ -18,7 +25,10 @@ Sol Solar is a self-hosted MCP server. You tell it a place and an array size. It
 
 - what the roof is expected to make today and tomorrow
 - when to run one appliance, given the power and duration you type
-- how many grid kilowatt-hours that shift avoids compared with 7 PM
+- a plan for several appliances that never asks one hour for more power than the roof is forecast to make
+- whether a battery you describe will last until sunrise, and whether tomorrow's sun can refill it
+- a morning briefing that names the strongest stretch, and says when that stretch is too thin for heavy loads
+- how many grid kilowatt-hours a shift avoids compared with 7 PM
 - a money figure only if you also type a price
 
 On 18 October 2026 a 5 kW array in Kyiv, tilted 35 degrees and facing south, got this answer for a washing machine assumed at 0.7 kW for 2 hours:
@@ -26,6 +36,8 @@ On 18 October 2026 a 5 kW array in Kyiv, tilted 35 degrees and facing south, got
 > Wait until tomorrow. Run the washing machine from 1 PM to 3 PM. That washing machine, running for 2 hours at 0.7 kilowatts, is about 1.4 kilowatt-hours. The roof should cover it in that window. Today the array is expected to make about 1.3 kilowatt-hours, so waiting is the better solar plan. A typical October day for this array is about 12.8 kilowatt-hours in the PVGIS record, so the forecast days are dim.
 
 The dim forecast is the point. A wrapper that always says "midday" would have been wrong that day. The server compared the live forecast with PVGIS and said the days were dim.
+
+Just after 4 AM that morning, the same array was asked about a typed 5 kWh battery at 40 percent, with a typed 0.3 kW household load. The charge covers the hours left until the 7:25 AM sunrise. The day's 1.3 kWh forecast does not refill the battery. A day plan for a 1 kW dishwasher, the washer, and 1.4 kW car charging can place only the washer, tomorrow from 1 PM to 3 PM. The other two would ask an hour for more than the forecast shows. None of those inputs were read from a meter or a battery.
 
 The web page at `/` is the voice client. It speaks the tool text. It does not call a language model.
 
@@ -69,9 +81,9 @@ Open-Meteo's free API is non-commercial. That fits a hackathon and home automati
 
 **Design.** The interaction is one household question and one spoken answer. The page leads with that sentence. The chart is support, not the product. Power, duration, and price are labeled as things you type.
 
-**Potential impact.** Anyone with a roof, a balcony array, or a small solar node can ask the question for their own place. There is no key to sign up for. The same answer is useful for shifting a wash, a dishwasher, or a charger. It is not limited to one city. It is an estimate, and it says so, which is what makes it safe to put on a speaker.
+**Potential impact.** Anyone with a roof, a balcony array, or a small solar node can ask the question for their own place. There is no key to sign up for. The same answer is useful for shifting a wash, planning several loads, or checking a battery against the night, which is an ordinary question where outages are ordinary. It is not limited to one city. It is an estimate, and it says so, which is what makes it safe to put on a speaker.
 
-**Quality of the idea.** A single API wrapper would have returned irradiance. This one keeps the home in the session, chooses between today and tomorrow, refuses to count surplus solar the appliance cannot use, and puts a typical year next to a dark forecast so the answer has a baseline. The words are produced by the tool, on purpose, so the voice client cannot hallucinate the energy.
+**Quality of the idea.** A single API wrapper would have returned irradiance. This one keeps the home in the session, chooses between today and tomorrow, refuses to count surplus solar the appliance cannot use, refuses to stack two appliances into an hour the roof cannot cover, and puts a typical year next to a dark forecast so the answer has a baseline. On a dim morning it will say the battery reaches sunrise and still say the sun will not refill it. The words are produced by the tool, on purpose, so the voice client cannot hallucinate the energy.
 
 ## Product feedback
 

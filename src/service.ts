@@ -44,6 +44,7 @@ export interface Production {
   site: SolarSite;
   slots: HourSlot[];
   timezone: string;
+  utcOffsetSeconds: number;
   daily: RawForecast["daily"];
   typical: TypicalMonth | null;
   pvgisFailed: boolean;
@@ -236,7 +237,7 @@ export async function loadProduction(deps: Deps, site: SolarSite): Promise<Produ
     if (error instanceof UpstreamError || error instanceof ZodError) pvgisFailed = true;
     else throw error;
   }
-  return { site, slots, timezone: raw.timezone, daily: raw.daily, typical, pvgisFailed, assumptions };
+  return { site, slots, timezone: raw.timezone, utcOffsetSeconds: raw.utcOffsetSeconds, daily: raw.daily, typical, pvgisFailed, assumptions };
 }
 
 export async function loadTypicalOnly(deps: Deps, site: SolarSite): Promise<TypicalMonth | null> {

@@ -162,10 +162,12 @@ describe("MCP server", () => {
       assert.equal(transport.protocolVersion, "2025-11-25");
       const tools = await client.listTools();
       assert.deepEqual(tools.tools.map((tool) => tool.name).sort(), [
+        "battery_through_the_night",
         "best_time_for_appliance",
         "daily_solar_briefing",
         "estimate_savings",
         "forecast_pv_production",
+        "plan_the_solar_day",
         "remember_solar_site",
       ]);
       const site = await client.callTool({
@@ -183,6 +185,13 @@ describe("MCP server", () => {
       assert.doesNotMatch(spoken(answer), /NaN|undefined/);
       const followup = await client.callTool({ name: "forecast_pv_production", arguments: {} });
       assert.match(spoken(followup), /kilowatt-hour/);
+      const battery = await client.callTool({
+        name: "battery_through_the_night",
+        arguments: { site_id: siteId, battery_kwh: 5, charge_percent: 40, household_load_kw: 0.3 },
+      });
+      assert.match(spoken(battery), /battery should last|runs out/);
+      assert.match(spoken(battery), /not read from a battery/);
+      assert.doesNotMatch(spoken(battery), /NaN|undefined/);
       const missing = await client.callTool({ name: "forecast_pv_production", arguments: { site_id: "missing-site" } });
       assert.match(spoken(missing), /don't have that site/);
       const prompt = await client.getPrompt({ name: "answer_solar_question", arguments: { question: "When should I run the washing machine?" } });

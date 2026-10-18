@@ -12,14 +12,18 @@ import {
   type Production,
   type SiteRequest,
 } from "./service.js";
+import { batteryThroughNight, MissingSunError, readMorning, scheduleDay, type ScheduledRun } from "./solar/household.js";
 import { round3, type PvAssumptions } from "./solar/model.js";
 import { localDate, localHour, type AppliancePlan, type WindowChoice } from "./solar/plan.js";
 import {
   ESTIMATE_CAVEAT,
   speakAppliance,
+  speakBattery,
   speakBriefing,
+  speakDayPlan,
   speakFacing,
   speakForecast,
+  speakMorning,
   speakSavings,
   speakSite,
   speakTypicalOnly,
@@ -173,8 +177,9 @@ function windowPayload(window: WindowChoice | null, production: Production, now:
   };
 }
 
-function dayPayload(production: Production, plan: AppliancePlan | null, now: Date) {
+function dayPayload(production: Production, plan: AppliancePlan | null, now: Date, extra: Array<{ start: Date; end: Date }> = []) {
   const chosen = plan?.window ?? null;
+  const windows = chosen ? [chosen, ...extra] : extra;
   const groups = new Map<string, typeof production.slots>();
   for (const slot of production.slots) {
     const date = localDate(slot.start, production.timezone);
@@ -194,7 +199,7 @@ function dayPayload(production: Production, plan: AppliancePlan | null, now: Dat
       start: slot.start.toISOString(),
       end: slot.end.toISOString(),
       energy_kwh: round3(slot.energyKwh),
-      in_window: Boolean(chosen && slot.start < chosen.end && slot.end > chosen.start),
+      in_window: windows.some((window) => slot.start < window.end && slot.end > window.start),
     })),
   }));
 }
@@ -434,7 +439,7 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
 
   server.registerTool("daily_solar_briefing", {
     title: "Daily solar briefing",
-    description: "One spoken briefing: today's production, tomorrow's, how that compares with a typical day, and optionally when to run one appliance. Use this when the person asks how the solar looks today. Say the returned text.",
+    description: "Morning routine briefing. Leads with the best solar window and, when the forecast includes cloud cover, whether clouds hang on. Then today's production, tomorrow's, a typical-year comparison, and optionally one appliance. Say the returned text.",
     inputSchema: {
       ...locationFields,
       appliance_name: applianceFields.appliance_name.optional(),
@@ -499,11 +504,130 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
         typicalDailyKwh: null,
       });
     }
-    const spoken = speakBriefing({ forecast, appliance: applianceSpoken });
+    const morning = speakMorning({ ...readMorning(production.slots, production.timezone, now), timeZone: production.timezone });
+    const spoken = `${morning} ${speakBriefing({ forecast, appliance: applianceSpoken })}`;
     return ok(spoken, {
       ...forecastBody(production, plan, now, started),
       decision: plan?.decision ?? null,
       window: windowPayload(plan?.window ?? null, production, now),
+    });
+  }));
+
+  server.registerTool("plan_the_solar_day", {
+    title: "Plan several appliances",
+    description: "Schedule up to six appliances into today's or tomorrow's solar forecast. Appliances share an hour only when their combined power fits under that hour's expected output. Say the returned text. Do not move a task to a different hour.",
+    inputSchema: {
+      ...locationFields,
+      appliances: z.array(z.object({
+        name: z.string().min(2).max(40),
+        power_kw: z.number().gt(0).max(50),
+        duration_hours: z.number().min(0.25).max(12),
+      })).min(1).max(6).describe("Loads to place, in priority order. Each power and duration is an assumption the person provides."),
+    },
+    outputSchema: {
+      site_id: z.string(),
+      timezone: z.string(),
+      spoken: z.string(),
+      day: z.string(),
+      runs: z.array(z.object({
+        name: z.string(),
+        start: z.string(),
+        end: z.string(),
+        load_kwh: z.number(),
+      })),
+      unscheduled: z.array(z.string()),
+      days: z.array(daySchema),
+      typical: typicalSchema,
+      assumptions: assumptionsSchema,
+      sources: z.array(sourceSchema),
+      elapsed_ms: z.number(),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: true, destructiveHint: false },
+  }, async (args, extra) => withErrors("plan_the_solar_day", async () => {
+    const started = Date.now();
+    const site = await resolveSite(deps, siteRequest(args, extra.sessionId));
+    const production = await loadProduction(deps, site);
+    const now = deps.now();
+    const loads = args.appliances.map((item) => ({
+      name: cleanName(item.name),
+      powerKw: item.power_kw,
+      durationHours: item.duration_hours,
+    }));
+    const schedule = scheduleDay({ slots: production.slots, timeZone: production.timezone, now, loads });
+    const spoken = speakDayPlan(schedule);
+    const runs: ScheduledRun[] = schedule.runs;
+    return ok(spoken, {
+      ...forecastBody(production, null, now, started, runs),
+      day: schedule.day,
+      runs: runs.map((run) => ({
+        name: run.name,
+        start: run.start.toISOString(),
+        end: run.end.toISOString(),
+        load_kwh: round3(run.loadKwh),
+      })),
+      unscheduled: schedule.unscheduled,
+    });
+  }));
+
+  server.registerTool("battery_through_the_night", {
+    title: "Will the battery last the night",
+    description: "Answer whether a home battery the person described will last until sunrise, and when the forecast sun can refill it. Capacity, charge, and household load must be typed by the person. Say the returned text. Do not invent a battery reading.",
+    inputSchema: {
+      ...locationFields,
+      battery_kwh: z.number().gt(0).max(500).describe("Battery capacity in kilowatt-hours, typed by the person."),
+      charge_percent: z.number().min(0).max(100).describe("Current state of charge, 0 to 100, typed by the person."),
+      household_load_kw: z.number().gt(0).max(50).describe("Steady household load in kilowatts during the night and the recharge, typed by the person."),
+    },
+    outputSchema: {
+      site_id: z.string(),
+      timezone: z.string(),
+      spoken: z.string(),
+      lasts: z.boolean(),
+      stored_kwh: z.number(),
+      night_need_kwh: z.number(),
+      shortfall_kwh: z.number(),
+      runs_out_at: z.string().nullable(),
+      refill_at: z.string().nullable(),
+      days: z.array(daySchema),
+      typical: typicalSchema,
+      assumptions: assumptionsSchema,
+      sources: z.array(sourceSchema),
+      elapsed_ms: z.number(),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: true, destructiveHint: false },
+  }, async (args, extra) => withErrors("battery_through_the_night", async () => {
+    const started = Date.now();
+    const site = await resolveSite(deps, siteRequest(args, extra.sessionId));
+    const production = await loadProduction(deps, site);
+    const now = deps.now();
+    let night;
+    try {
+      night = batteryThroughNight({
+        slots: production.slots,
+        timeZone: production.timezone,
+        now,
+        capacityKwh: args.battery_kwh,
+        chargePercent: args.charge_percent,
+        loadKw: args.household_load_kw,
+        daily: production.daily,
+        utcOffsetSeconds: production.utcOffsetSeconds,
+      });
+    } catch (error) {
+      if (error instanceof MissingSunError) {
+        throw new SolarError("I don't have sunrise and sunset for that place, so I can't say how long the night is.");
+      }
+      throw error;
+    }
+    const spoken = speakBattery({ ...night, chargePercent: args.charge_percent });
+    const highlight = night.refillAt ? [{ start: night.nightEnd, end: night.refillAt }] : [];
+    return ok(spoken, {
+      ...forecastBody(production, null, now, started, highlight),
+      lasts: night.lasts,
+      stored_kwh: round3(night.storedKwh),
+      night_need_kwh: round3(night.nightNeedKwh),
+      shortfall_kwh: round3(night.shortfallKwh),
+      runs_out_at: night.runsOutAt?.toISOString() ?? null,
+      refill_at: night.refillAt?.toISOString() ?? null,
     });
   }));
 
@@ -539,11 +663,11 @@ function dayTotal(production: Production, now: Date, offset: number): number {
   return production.slots.reduce((sum, slot) => localDate(slot.start, production.timezone) === date ? sum + slot.energyKwh : sum, 0);
 }
 
-function forecastBody(production: Production, plan: AppliancePlan | null, now: Date, started: number) {
+function forecastBody(production: Production, plan: AppliancePlan | null, now: Date, started: number, extra: Array<{ start: Date; end: Date }> = []) {
   return {
     site_id: production.site.id,
     timezone: production.timezone,
-    days: dayPayload(production, plan, now),
+    days: dayPayload(production, plan, now, extra),
     typical: typicalPayload(production),
     assumptions: assumptionPayload(production.assumptions),
     sources: DATA_SOURCES,

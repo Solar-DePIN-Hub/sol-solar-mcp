@@ -12,6 +12,7 @@ const forecastSchema = z.object({
     time: z.array(z.string()),
     global_tilted_irradiance: z.array(z.number().nullable()),
     temperature_2m: z.array(z.number().nullable()),
+    cloud_cover: z.array(z.number().nullable()).optional(),
   }),
   daily: z.object({
     time: z.array(z.string()),
@@ -23,7 +24,7 @@ const forecastSchema = z.object({
 export interface RawForecast {
   timezone: string;
   utcOffsetSeconds: number;
-  hours: Array<{ end: string; gtiWm2: number; ambientC: number | null }>;
+  hours: Array<{ end: string; gtiWm2: number; ambientC: number | null; cloudCover: number | null }>;
   daily: Array<{ date: string; sunrise: string | null; sunset: string | null }>;
 }
 
@@ -42,12 +43,12 @@ export async function fetchForecast(
   store: KeyValueStore,
   fetchImpl: typeof fetch,
 ): Promise<RawForecast> {
-  const key = `forecast:${input.latitude.toFixed(3)}:${input.longitude.toFixed(3)}:${input.tilt.toFixed(1)}:${input.azimuth.toFixed(1)}`;
+  const key = `forecast:v2:${input.latitude.toFixed(3)}:${input.longitude.toFixed(3)}:${input.tilt.toFixed(1)}:${input.azimuth.toFixed(1)}`;
   return cachedJson(store, key, config.forecastTtlSeconds, async () => {
     const url = new URL("https://api.open-meteo.com/v1/forecast");
     url.searchParams.set("latitude", String(input.latitude));
     url.searchParams.set("longitude", String(input.longitude));
-    url.searchParams.set("hourly", "global_tilted_irradiance,temperature_2m");
+    url.searchParams.set("hourly", "global_tilted_irradiance,temperature_2m,cloud_cover");
     url.searchParams.set("daily", "sunrise,sunset");
     url.searchParams.set("forecast_days", "3");
     url.searchParams.set("timezone", "auto");
@@ -61,6 +62,7 @@ export async function fetchForecast(
         end,
         gtiWm2: body.hourly.global_tilted_irradiance[index] ?? 0,
         ambientC: body.hourly.temperature_2m[index] ?? null,
+        cloudCover: body.hourly.cloud_cover?.[index] ?? null,
       })),
       daily: (body.daily?.time ?? []).map((date, index) => ({
         date,
@@ -84,6 +86,7 @@ export function slotsFromForecast(raw: RawForecast, systemKw: number, assumption
       ambientC,
       ambientAssumed,
       energyKwh: hourEnergyKwh(hour.gtiWm2, ambientC, systemKw, assumptions),
+      cloudCover: hour.cloudCover,
     };
   }).sort((a, b) => a.start.getTime() - b.start.getTime());
 }

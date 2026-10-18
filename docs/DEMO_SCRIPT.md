@@ -17,14 +17,15 @@ A local screen recording of the browser half was captured that day: connect, the
 
 ## Shot list
 
-### 0:00–0:12 Title
+### 0:00–0:10 Title
 
 On-screen text, large:
 
-Sol Solar
-When should I run the washing machine today?
+Sol Solar — a solar-aware MCP server for Alexa+
 
-Caption: Sol Solar answers one household question. When should I run the washing machine today?
+Caption: Sol Solar answers one household question. Will the battery last the night, and when should I run the washing machine?
+
+The final captions are burned into the demo video and kept in [DEMO_CAPTIONS.srt](DEMO_CAPTIONS.srt). Time the cues to the cut you upload. The outage question opens the browser section, because that is the sentence a dim morning in Kyiv actually produced.
 
 ### 0:12–0:28 The roof you typed
 

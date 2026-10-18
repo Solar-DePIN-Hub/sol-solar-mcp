@@ -38,7 +38,7 @@ function buildServer(deps: Deps): McpServer {
     name: "sol-solar",
     version: "1.0.0",
   }, {
-    instructions: "Sol Solar estimates photovoltaic production for one home or small array and says when to run an appliance. Speak the tool text to the person. Never invent kilowatt-hours or a clock time. Figures are model estimates, not inverter measurements. Keep the site_id between turns.",
+    instructions: "Sol Solar estimates photovoltaic production for one home or small array. It says when to run appliances, whether a typed battery lasts the night, and gives a morning solar briefing. Speak the tool text to the person. Never invent kilowatt-hours, a clock time, a battery size, or a household load. Figures are model estimates, not inverter measurements. Keep the site_id between turns.",
   });
   registerSolarTools(server, deps);
   return server;

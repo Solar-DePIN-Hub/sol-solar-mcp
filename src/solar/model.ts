@@ -22,6 +22,8 @@ export interface HourSlot {
   ambientC: number;
   ambientAssumed: boolean;
   energyKwh: number;
+  /** Open-Meteo hourly cloud cover, 0–100. Absent when the forecast did not include it. */
+  cloudCover?: number | null;
 }
 
 export function hourEnergyKwh(

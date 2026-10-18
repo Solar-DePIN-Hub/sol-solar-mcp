@@ -1,3 +1,4 @@
+import type { BatteryNight, DaySchedule, MorningRead, ScheduledRun } from "./household.js";
 import type { AppliancePlan, WindowChoice } from "./plan.js";
 
 const CURRENCY: Record<string, [string, string]> = {
@@ -225,6 +226,91 @@ export function speakBriefing(input: {
   const forecast = input.forecast.replace(` ${ESTIMATE_CAVEAT}`, "");
   const appliance = input.appliance.replace(` ${ESTIMATE_CAVEAT}`, "").replace(" This assumes the sunlight in that window is free for this appliance.", "");
   return `${forecast} ${appliance} ${ESTIMATE_CAVEAT}`;
+}
+
+function listRuns(runs: ScheduledRun[], timeZone: string): string {
+  const parts = runs.map((run) => `${run.name} from ${speakClock(run.start, timeZone)} to ${speakClock(run.end, timeZone)}`);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function oneRun(schedule: DaySchedule, run: ScheduledRun): string {
+  const from = speakClock(run.start, schedule.timeZone);
+  const to = speakClock(run.end, schedule.timeZone);
+  if (schedule.day === "today") return `Today, run the ${run.name} from ${from} to ${to}.`;
+  return `Wait until tomorrow. Run the ${run.name} from ${from} to ${to}.`;
+}
+
+export function speakDayPlan(schedule: DaySchedule): string {
+  const lead = schedule.runs.length === 1 && schedule.runs[0]
+    ? oneRun(schedule, schedule.runs[0])
+    : schedule.day === "today"
+      ? `Today: ${listRuns(schedule.runs, schedule.timeZone)}.`
+      : `Wait until tomorrow. ${listRuns(schedule.runs, schedule.timeZone)}.`;
+  const sentences: string[] = [];
+  if (schedule.runs.length === 0) {
+    sentences.push("I can't fit those appliances into the solar forecast for today or tomorrow.");
+  } else {
+    sentences.push(lead.charAt(0).toUpperCase() + lead.slice(1));
+  }
+  if (schedule.shared.length > 0) {
+    const share = schedule.shared[0];
+    if (share) {
+      sentences.push(`The ${share.names[0]} and the ${share.names[1]} share ${speakClock(share.start, schedule.timeZone)} to ${speakClock(share.end, schedule.timeZone)}. Their combined draw stays within the roof's output then.`);
+    }
+  }
+  if (schedule.unscheduled.length === 1) {
+    sentences.push(`I can't cover the ${schedule.unscheduled[0]} from the roof without asking an hour for more than it is forecast to make.`);
+  } else if (schedule.unscheduled.length > 1) {
+    const names = schedule.unscheduled.slice(0, -1).map((name) => `the ${name}`).join(", ");
+    const last = schedule.unscheduled[schedule.unscheduled.length - 1];
+    sentences.push(`I can't cover ${names} or the ${last} from the roof without asking an hour for more than it is forecast to make.`);
+  }
+  sentences.push("Each hour only gives an appliance the power it draws, and two appliances share an hour only when the roof can cover both.");
+  sentences.push(ESTIMATE_CAVEAT);
+  return sentences.join(" ");
+}
+
+export function speakBattery(input: BatteryNight & { chargePercent: number }): string {
+  const capacity = speakKwh(input.capacityKwh).replace("kilowatt-hours", "kilowatt-hour");
+  const held = `At ${Math.round(input.chargePercent)} percent, a ${capacity} battery holds about ${speakKwh(input.storedKwh)}.`;
+  const nightSpan = `from ${speakClock(input.nightStart, input.timeZone)} to ${speakClock(input.nightEnd, input.timeZone)}`;
+  const load = `A ${speakNumber(input.loadKw)} kilowatt load ${nightSpan} needs about ${speakKwh(input.nightNeedKwh)}.`;
+  const typed = "You typed the battery size, the charge, and the household load. They are not read from a battery.";
+  let verdict: string;
+  if (input.nightHours < 0.15) {
+    verdict = "The sun is up, or about to be. There isn't a night left to bridge.";
+  } else if (input.lasts) {
+    verdict = "Yes. The battery should last through that night.";
+  } else {
+    const when = input.runsOutAt ? `around ${speakClock(input.runsOutAt, input.timeZone)}` : "before sunrise";
+    verdict = `No. The battery runs out ${when}. It is about ${speakKwh(input.shortfallKwh)} short of sunrise.`;
+  }
+  let refill: string;
+  if (input.refillAt && input.socAtSunriseKwh + 1e-6 >= input.capacityKwh) {
+    refill = "It is still full at sunrise, so the roof does not have to refill it.";
+  } else if (input.refillAt) {
+    refill = `The roof should refill it by about ${speakClock(input.refillAt, input.timeZone)}, if the house keeps drawing ${speakNumber(input.loadKw)} kilowatts.`;
+  } else {
+    refill = `The forecast sun is not enough to refill it. That day's roof is expected to make about ${speakKwh(input.refillDaySolarKwh)}.`;
+  }
+  return `${verdict} ${held} ${load} ${refill} ${typed} ${ESTIMATE_CAVEAT}`;
+}
+
+export function speakMorning(input: MorningRead & { timeZone: string }): string {
+  const hello = input.greeting === "morning" ? "Good morning." : input.greeting === "afternoon" ? "Good afternoon." : "Good evening.";
+  let windowSentence = "There isn't a strong solar window left today.";
+  if (input.windowStart && input.windowEnd) {
+    windowSentence = `Run heavy loads from ${speakClock(input.windowStart, input.timeZone)} to ${speakClock(input.windowEnd, input.timeZone)} today.`;
+  }
+  if (input.windowStart && input.windowEnd && input.windowKwh < 1.5) {
+    windowSentence = `The strongest stretch today is from ${speakClock(input.windowStart, input.timeZone)} to ${speakClock(input.windowEnd, input.timeZone)}, about ${speakKwh(input.windowKwh)}. That is a thin window for heavy loads.`;
+  }
+  const sky = input.cloudyUntil
+    ? `Clouds hang on until about ${speakClock(input.cloudyUntil, input.timeZone)}.`
+    : "";
+  return [windowSentence, hello, sky].filter(Boolean).join(" ");
 }
 
 export function speakTypicalOnly(input: {

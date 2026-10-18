@@ -56,6 +56,26 @@ function siteArgs() {
   return args;
 }
 
+function batteryArgs() {
+  return {
+    ...siteArgs(),
+    battery_kwh: numberField("#battery"),
+    charge_percent: numberField("#charge"),
+    household_load_kw: numberField("#load"),
+  };
+}
+
+function dayPlanArgs() {
+  return {
+    ...siteArgs(),
+    appliances: [
+      { name: "dishwasher", power_kw: 1, duration_hours: 1 },
+      { name: "washing machine", power_kw: numberField("#power"), duration_hours: numberField("#duration") },
+      { name: "car charging", power_kw: 1.4, duration_hours: 3 },
+    ],
+  };
+}
+
 function applianceArgs() {
   return {
     ...siteArgs(),
@@ -67,8 +87,11 @@ function applianceArgs() {
 
 function validate(kind) {
   if (!field("#place") || numberField("#system") === undefined) return "Add a city and an array size first.";
-  if ((kind === "wash" || kind === "savings" || kind === "briefing") && (numberField("#power") === undefined || numberField("#duration") === undefined)) {
+  if ((kind === "wash" || kind === "savings" || kind === "day") && (numberField("#power") === undefined || numberField("#duration") === undefined)) {
     return "Add the appliance power and hours. They are assumptions, not a meter reading.";
+  }
+  if (kind === "outage" && (numberField("#battery") === undefined || numberField("#charge") === undefined || numberField("#load") === undefined)) {
+    return "Add a battery size, a charge percent, and a household load. They are assumptions, not a battery reading.";
   }
   const price = numberField("#price");
   const currency = field("#currency");
@@ -205,9 +228,11 @@ async function ask(kind) {
     const remembered = await callTool("remember_solar_site", siteArgs());
     state.siteId = remembered.data.site_id || state.siteId;
     let result = remembered;
+    if (kind === "outage") result = await callTool("battery_through_the_night", batteryArgs());
     if (kind === "wash") result = await callTool("best_time_for_appliance", applianceArgs());
+    if (kind === "day") result = await callTool("plan_the_solar_day", dayPlanArgs());
     if (kind === "forecast") result = await callTool("forecast_pv_production", siteArgs());
-    if (kind === "briefing") result = await callTool("daily_solar_briefing", applianceArgs());
+    if (kind === "briefing") result = await callTool("daily_solar_briefing", siteArgs());
     if (kind === "savings") result = await callTool("estimate_savings", applianceArgs());
     const kickers = {
       "run-today": "Run it today",
@@ -215,8 +240,11 @@ async function ask(kind) {
       "partial-today": "Today covers part of it",
       "partial-tomorrow": "Tomorrow is better",
       "no-window": "No strong window",
+      today: "Today's plan",
+      tomorrow: "Wait until tomorrow",
     };
-    kicker.textContent = kickers[result.data.decision] || "Spoken answer";
+    if (typeof result.data.lasts === "boolean") kicker.textContent = result.data.lasts ? "It should last the night" : "It runs out overnight";
+    else kicker.textContent = kickers[result.data.decision] || kickers[result.data.day] || "Spoken answer";
     splitSpoken(result.spoken);
     if (result.data.timezone === undefined && remembered.data.timezone) result.data.timezone = remembered.data.timezone;
     draw(result.data.days ? result.data : remembered.data);

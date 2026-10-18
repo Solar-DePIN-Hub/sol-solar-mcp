@@ -107,6 +107,22 @@ async function main(): Promise<void> {
   });
   const client = new Client({ name: "sol-solar-demo", version: "1.0.0" });
   await client.connect(transport);
+  if (process.argv.includes("--list-tools")) {
+    const listed = await client.listTools();
+    console.log("Sol Solar tools/list");
+    console.log(`Server: ${config.resource}`);
+    console.log(`Protocol: ${transport.protocolVersion ?? "unknown"}`);
+    console.log("Transport: Streamable HTTP");
+    console.log("");
+    for (const tool of listed.tools) {
+      const sentence = (tool.description ?? "").split(/(?<=\.)\s/)[0] ?? "";
+      console.log(tool.name);
+      console.log(`  ${sentence}`);
+      console.log("");
+    }
+    await client.close();
+    return;
+  }
   console.log("Sol Solar live MCP call");
   console.log(`Server: ${config.resource}`);
   console.log(`Protocol: ${transport.protocolVersion ?? "unknown"}`);

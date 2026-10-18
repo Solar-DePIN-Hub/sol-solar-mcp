@@ -20,6 +20,7 @@
     "test": "tsx --test test/*.test.ts",
     "test:live": "tsx --test test/live.live.ts",
     "demo": "tsx src/demo.ts",
+    "tools": "tsx src/demo.ts --list-tools",
     "token": "tsx src/demo.ts --token-only"
   },
   "dependencies": {
