@@ -313,9 +313,12 @@ async function ask(kind) {
     return;
   }
   if (!state.token) {
-    kicker.textContent = "Connect first";
-    headline.textContent = "Connect this browser, then ask again.";
-    rest.textContent = "Connection uses OAuth with PKCE, the same shape Alexa+ asks for.";
+    // One tap: remember the question, run OAuth (PKCE S256, as Alexa+ account linking does), then ask it on return.
+    sessionStorage.setItem("sol-solar-pending", kind);
+    kicker.textContent = "Linking first";
+    headline.textContent = "Linking this browser, then I'll answer.";
+    rest.textContent = "Account linking uses OAuth 2.1 with PKCE, the same shape Alexa+ asks for.";
+    void beginConnect();
     return;
   }
   connect.disabled = true;
@@ -346,12 +349,12 @@ async function ask(kind) {
     if (kind === "savings") result = await callTool("estimate_savings", applianceArgs());
     const kickers = {
       "run-today": "Run it today",
-      "wait-tomorrow": "Wait until tomorrow",
+      "wait-tomorrow": "Tomorrow is the solar day",
       "partial-today": "Today covers part of it",
       "partial-tomorrow": "Tomorrow is better",
       "no-window": "No strong window",
       today: "Today's plan",
-      tomorrow: "Wait until tomorrow",
+      tomorrow: "Tomorrow's plan",
     };
     if (typeof result.data.lasts === "boolean") kicker.textContent = result.data.lasts ? "It should last the night" : "It runs out overnight";
     else kicker.textContent = kickers[result.data.decision] || kickers[result.data.day] || "Spoken answer";
@@ -423,6 +426,13 @@ async function finishConnect() {
   window.history.replaceState({}, "", "/");
   connect.textContent = "Connected";
   addTrace("OAuth 2.1 authorization code + PKCE S256");
+  const pending = sessionStorage.getItem("sol-solar-pending");
+  sessionStorage.removeItem("sol-solar-pending");
+  if (pending) {
+    const button = document.querySelector(`[data-ask="${pending}"]`);
+    if (button) button.classList.add("is-active");
+    void ask(pending);
+  }
 }
 
 connect.addEventListener("click", () => void beginConnect());

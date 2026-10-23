@@ -229,7 +229,7 @@ export function speakBriefing(input: {
 }
 
 function listRuns(runs: ScheduledRun[], timeZone: string): string {
-  const parts = runs.map((run) => `${run.name} from ${speakClock(run.start, timeZone)} to ${speakClock(run.end, timeZone)}`);
+  const parts = runs.map((run) => `the ${run.name} from ${speakClock(run.start, timeZone)} to ${speakClock(run.end, timeZone)}`);
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0] ?? "";
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
@@ -246,8 +246,8 @@ export function speakDayPlan(schedule: DaySchedule): string {
   const lead = schedule.runs.length === 1 && schedule.runs[0]
     ? oneRun(schedule, schedule.runs[0])
     : schedule.day === "today"
-      ? `Today: ${listRuns(schedule.runs, schedule.timeZone)}.`
-      : `Wait until tomorrow. ${listRuns(schedule.runs, schedule.timeZone)}.`;
+      ? `Today, run ${listRuns(schedule.runs, schedule.timeZone)}.`
+      : `Wait until tomorrow. Run ${listRuns(schedule.runs, schedule.timeZone)}.`;
   const sentences: string[] = [];
   if (schedule.runs.length === 0) {
     sentences.push("I can't fit those appliances into the solar forecast for today or tomorrow.");

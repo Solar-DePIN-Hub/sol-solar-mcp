@@ -67,6 +67,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .ask { padding: 18px 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .chips button { text-align: left; }
+.chips + .prompt-label { margin-top: 18px; }
 .chips button.is-active {
   background: var(--sun);
   color: var(--soil);

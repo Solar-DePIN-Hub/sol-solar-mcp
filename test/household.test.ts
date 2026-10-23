@@ -47,7 +47,7 @@ describe("day plan", () => {
     assert.equal(localHour(schedule.runs[2]!.start, "Europe/Kyiv"), 13);
     assert.equal(scheduleRespectsRoof(sunny, schedule.runs), true);
     const spoken = speakDayPlan(schedule);
-    assert.match(spoken, /^Today: dishwasher from 10 AM to 11 AM, washing machine from 11 AM to 1 PM, and car charging from 1 PM to 4 PM\./);
+    assert.match(spoken, /^Today, run the dishwasher from 10 AM to 11 AM, the washing machine from 11 AM to 1 PM, and the car charging from 1 PM to 4 PM\./);
     assert.match(spoken, /model estimate/);
     assert.doesNotMatch(spoken, /NaN|undefined/);
   });
@@ -141,5 +141,27 @@ describe("morning briefing", () => {
     assert.match(spoken, /^Run heavy loads from 12 PM to 3 PM today\./);
     assert.match(spoken, /Good morning\./);
     assert.match(spoken, /Clouds hang on until about 12 PM\./);
+  });
+});
+
+describe("day plan wording", () => {
+  it("says 'Run the …' for several appliances tomorrow, so the sentence has a verb", () => {
+    const run = (name: string, from: string, to: string, kw: number) => ({
+      name, powerKw: kw, durationHours: 1, start: new Date(from), end: new Date(to), loadKwh: kw, date: "2026-10-24",
+    });
+    const spoken = speakDayPlan({
+      day: "tomorrow",
+      timeZone: "Europe/Kyiv",
+      todayDate: "2026-10-23",
+      tomorrowDate: "2026-10-24",
+      runs: [
+        run("washing machine", "2026-10-24T11:00:00+03:00", "2026-10-24T13:00:00+03:00", 0.7),
+        run("dishwasher", "2026-10-24T13:00:00+03:00", "2026-10-24T14:00:00+03:00", 1),
+      ],
+      unscheduled: ["car charging"],
+      shared: [],
+    });
+    assert.match(spoken, /^Wait until tomorrow\. Run the washing machine from 11 AM to 1 PM, and the dishwasher from 1 PM to 2 PM\./);
+    assert.match(spoken, /I can't cover the car charging/);
   });
 });
