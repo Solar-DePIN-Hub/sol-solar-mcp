@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { KeyValueStore } from "./store.js";
+import type { Signer } from "./signing.js";
 
 export interface SavedAppliance {
   name: string;
@@ -38,9 +39,18 @@ export class SiteBook {
   private readonly bySession = new Map<string, string>();
   private readonly order: string[] = [];
 
-  constructor(private readonly store?: KeyValueStore) {}
+  /**
+   * With a signer (stateless mode), the site_id is the signed household itself, so any
+   * server instance can read it back. Changing the household gives a new site_id.
+   */
+  constructor(private readonly store?: KeyValueStore, private readonly signer?: Signer) {}
 
-  save(site: SolarSite, sessionId?: string): SolarSite {
+  save(input: SolarSite, sessionId?: string): SolarSite {
+    let site = input;
+    if (this.signer) {
+      const { id: _drop, ...content } = input;
+      site = { ...content, id: this.signer.sign("h", content) };
+    }
     if (!this.sites.has(site.id)) {
       this.order.push(site.id);
     }
@@ -54,7 +64,7 @@ export class SiteBook {
   }
 
   create(input: Omit<SolarSite, "id">, sessionId?: string): SolarSite {
-    return this.save({ ...input, id: randomUUID() }, sessionId);
+    return this.save({ ...input, id: this.signer ? "" : randomUUID() }, sessionId);
   }
 
   resolve(sessionId: string | undefined, siteId?: string): SolarSite | undefined {
@@ -70,6 +80,10 @@ export class SiteBook {
     if (local) {
       if (sessionId) this.bySession.set(sessionId, local.id);
       return local;
+    }
+    if (this.signer) {
+      const content = this.signer.verify<Omit<SolarSite, "id">>("h", siteId);
+      return content ? this.save({ ...content, id: siteId }, sessionId) : undefined;
     }
     if (!this.store || !/^[0-9a-f-]{36}$/i.test(siteId)) return undefined;
     const raw = await this.store.get(`site:${siteId}`);

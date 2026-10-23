@@ -24,13 +24,15 @@ function freePort(): Promise<number> {
   });
 }
 
-async function start(fetchImpl?: typeof fetch) {
+async function start(fetchImpl?: typeof fetch, extraEnv: Record<string, string> = {}, fixedPort?: number) {
+  // fixedPort: the public URL to claim (another instance behind the same domain); listen elsewhere.
   const port = await freePort();
   const config = loadConfig({
     PORT: String(port),
     HOST: "127.0.0.1",
-    PUBLIC_BASE_URL: `http://127.0.0.1:${port}`,
+    PUBLIC_BASE_URL: `http://127.0.0.1:${fixedPort ?? port}`,
     NODE_ENV: "test",
+    ...extraEnv,
   });
   const { app, shutdown } = createApp(config, {
     fetch: fetchImpl,
@@ -40,6 +42,7 @@ async function start(fetchImpl?: typeof fetch) {
   await once(server, "listening");
   return {
     base: `http://127.0.0.1:${port}`,
+    publicBase: config.publicBaseUrl,
     resource: config.resourceUrl,
     async close() {
       await shutdown();
@@ -259,6 +262,56 @@ describe("MCP server", () => {
       await second.close();
     } finally {
       await ctx.close();
+    }
+  });
+
+  it("stateless mode: a second instance accepts the first instance's token and household", async () => {
+    const env = { MCP_STATELESS: "1", SIGNING_KEY: "test-signing-key-0123456789-abcdefghij" };
+    const a = await start(mockFetch(), env);
+    const port = Number(new URL(a.base).port);
+    try {
+      const token = await mint(a.base, a.resource);
+      const client = async (base: string) => {
+        const transport = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+          requestInit: { headers: { authorization: `Bearer ${token}` } },
+        });
+        const c = new Client({ name: "sol-solar-test", version: "1.0.0" });
+        await c.connect(transport);
+        return { c, transport };
+      };
+      const first = await client(a.base);
+      assert.equal(first.transport.sessionId, undefined);
+      const site = await first.c.callTool({ name: "remember_solar_site", arguments: { place: "Kyiv", system_kw: 5, tilt_degrees: 35, azimuth_degrees: 0 } });
+      const siteId = (site as { structuredContent?: { site_id?: string } }).structuredContent?.site_id ?? "";
+      assert.match(siteId, /^h\./);
+      const saved = await first.c.callTool({ name: "remember_household_appliances", arguments: { site_id: siteId, appliances: [{ name: "washing machine", power_kw: 0.7, duration_hours: 2 }] } });
+      const householdId = (saved as { structuredContent?: { site_id?: string } }).structuredContent?.site_id ?? "";
+      assert.notEqual(householdId, siteId);
+      await first.c.close();
+      await a.close();
+
+      // A different process behind the same public URL with the same key: a new serverless instance.
+      const b = await start(mockFetch(), env, port);
+      try {
+        const second = await client(b.base);
+        const answer = await second.c.callTool({ name: "best_time_for_appliance", arguments: { site_id: householdId, appliance_name: "washing machine" } });
+        assert.match(spoken(answer), /power and duration you saved/);
+        const forged = householdId.slice(0, -2) + (householdId.endsWith("AA") ? "BB" : "AA");
+        const rejected = await second.c.callTool({ name: "forecast_pv_production", arguments: { site_id: forged } });
+        assert.match(spoken(rejected), /don't have that site/);
+        await second.c.close();
+        const badToken = await fetch(`${b.base}/mcp`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token.slice(0, -2)}xx`, "content-type": "application/json", accept: "application/json, text/event-stream" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+        });
+        assert.equal(badToken.status, 401);
+      } finally {
+        await b.close();
+      }
+    } catch (error) {
+      await a.close().catch(() => undefined);
+      throw error;
     }
   });
 });

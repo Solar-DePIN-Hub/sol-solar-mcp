@@ -19,6 +19,9 @@ export interface Config {
   store: "memory" | "dynamodb";
   dynamoTable?: string;
   awsRegion: string;
+  /** Stateless mode: no MCP session map, signed OAuth codes and tokens, signed household ids. For serverless hosts. */
+  stateless: boolean;
+  signingKey?: string;
 }
 
 function requiredNumber(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number, max: number): number {
@@ -92,5 +95,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     store,
     dynamoTable,
     awsRegion: env.AWS_REGION ?? env.AWS_DEFAULT_REGION ?? "eu-central-1",
+    stateless: env.MCP_STATELESS === "1" || env.MCP_STATELESS === "true",
+    signingKey: env.SIGNING_KEY?.trim() || undefined,
   };
 }

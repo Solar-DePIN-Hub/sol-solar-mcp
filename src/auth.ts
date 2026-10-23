@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import type { Config } from "./config.js";
 import type { KeyValueStore } from "./store.js";
+import type { Signer } from "./signing.js";
 
 interface AuthCode {
   clientId: string;
@@ -113,7 +114,7 @@ function validateAuthorize(config: Config, fields: Record<string, string>): stri
   return null;
 }
 
-export function registerAuth(app: Express, config: Config, store: KeyValueStore): void {
+export function registerAuth(app: Express, config: Config, store: KeyValueStore, signer?: Signer): void {
   app.get("/.well-known/oauth-protected-resource", (_req, res) => {
     res.json(protectedResourceMetadata(config));
   });
@@ -167,7 +168,6 @@ export function registerAuth(app: Express, config: Config, store: KeyValueStore)
       res.redirect(302, redirect.toString());
       return;
     }
-    const code = randomBytes(32).toString("base64url");
     const record: AuthCode = {
       clientId: fields.client_id,
       redirectUri: fields.redirect_uri,
@@ -176,7 +176,14 @@ export function registerAuth(app: Express, config: Config, store: KeyValueStore)
       scope: fields.scope,
       expiresAt: Date.now() + 60_000,
     };
-    await store.set(`code:${code}`, JSON.stringify(record), 60);
+    let code: string;
+    if (signer) {
+      // Stateless: the code carries its own record. Replay is limited by the 60 s expiry and PKCE.
+      code = signer.sign("c", { ...record, nonce: randomBytes(9).toString("base64url") });
+    } else {
+      code = randomBytes(32).toString("base64url");
+      await store.set(`code:${code}`, JSON.stringify(record), 60);
+    }
     redirect.searchParams.set("code", code);
     res.redirect(302, redirect.toString());
   });
@@ -196,12 +203,19 @@ export function registerAuth(app: Express, config: Config, store: KeyValueStore)
       oauthError(res, 400, "invalid_request", "code, code_verifier, client_id, redirect_uri, and resource are required.");
       return;
     }
-    const raw = await store.take(`code:${code}`);
-    if (!raw) {
+    let saved: AuthCode | undefined;
+    if (signer) {
+      saved = signer.verify<AuthCode>("c", code);
+      if (saved && (await store.get(`used:${code.slice(-32)}`))) saved = undefined;
+      if (saved) await store.set(`used:${code.slice(-32)}`, "1", 120);
+    } else {
+      const raw = await store.take(`code:${code}`);
+      saved = raw ? JSON.parse(raw) as AuthCode : undefined;
+    }
+    if (!saved) {
       oauthError(res, 400, "invalid_grant", "The authorization code is unknown, expired, or already used.");
       return;
     }
-    const saved = JSON.parse(raw) as AuthCode;
     if (saved.expiresAt <= Date.now() || saved.clientId !== clientId || saved.redirectUri !== redirectUri || saved.resource !== resource) {
       oauthError(res, 400, "invalid_grant", "The authorization code does not match this client, redirect, or resource.");
       return;
@@ -210,14 +224,19 @@ export function registerAuth(app: Express, config: Config, store: KeyValueStore)
       oauthError(res, 400, "invalid_grant", "PKCE verification failed.");
       return;
     }
-    const token = randomBytes(32).toString("base64url");
     const access: AccessToken = {
       clientId,
       resource,
       scope: saved.scope,
       expiresAt: Date.now() + config.tokenTtlSeconds * 1000,
     };
-    await store.set(`token:${token}`, JSON.stringify(access), config.tokenTtlSeconds);
+    let token: string;
+    if (signer) {
+      token = signer.sign("t", access);
+    } else {
+      token = randomBytes(32).toString("base64url");
+      await store.set(`token:${token}`, JSON.stringify(access), config.tokenTtlSeconds);
+    }
     res.set("cache-control", "no-store").json({
       access_token: token,
       token_type: "Bearer",
@@ -227,7 +246,7 @@ export function registerAuth(app: Express, config: Config, store: KeyValueStore)
   });
 }
 
-export async function readBearer(config: Config, store: KeyValueStore, req: Request, res: Response): Promise<boolean> {
+export async function readBearer(config: Config, store: KeyValueStore, req: Request, res: Response, signer?: Signer): Promise<boolean> {
   if (typeof req.query.access_token === "string" || typeof req.query.token === "string") {
     oauthError(res, 400, "invalid_request", "Send the access token in the Authorization header, not the query string.");
     return false;
@@ -239,12 +258,17 @@ export async function readBearer(config: Config, store: KeyValueStore, req: Requ
   }
   const token = header.replace(/^Bearer\s+/, "").trim();
   if (config.devBearerToken && safeEqual(token, config.devBearerToken)) return true;
-  const raw = await store.get(`token:${token}`);
-  if (!raw) {
+  let saved: AccessToken | undefined;
+  if (signer) {
+    saved = signer.verify<AccessToken>("t", token);
+  } else {
+    const raw = await store.get(`token:${token}`);
+    saved = raw ? JSON.parse(raw) as AccessToken : undefined;
+  }
+  if (!saved) {
     res.status(401).json({ error: "invalid_token" });
     return false;
   }
-  const saved = JSON.parse(raw) as AccessToken;
   if (saved.expiresAt <= Date.now() || saved.resource !== config.resourceUrl) {
     res.status(401).json({ error: "invalid_token" });
     return false;

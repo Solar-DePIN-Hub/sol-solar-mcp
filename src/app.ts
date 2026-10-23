@@ -12,6 +12,7 @@ import type { Deps } from "./service.js";
 import type { KeyValueStore } from "./store.js";
 import { registerSolarTools } from "./tools.js";
 import { SOLAR_CARD_HTML } from "./ui/solarCard.js";
+import { Signer } from "./signing.js";
 
 const MAX_SESSIONS = 200;
 
@@ -47,10 +48,14 @@ function buildServer(deps: Deps): McpServer {
 
 export function createApp(config: Config, options: AppOptions = {}): { app: Express; shutdown: () => Promise<void> } {
   const store = options.store ?? createStore(config);
+  const signer = config.stateless ? (config.signingKey ? new Signer(config.signingKey) : Signer.random()) : undefined;
+  if (config.stateless && !config.signingKey) {
+    console.log(JSON.stringify({ level: "warn", message: "MCP_STATELESS without SIGNING_KEY: using a per-process key" }));
+  }
   const deps: Deps = {
     config,
     store,
-    sites: new SiteBook(store),
+    sites: new SiteBook(store, signer),
     fetch: options.fetch ?? fetch,
     now: options.now ?? (() => new Date()),
   };
@@ -106,7 +111,7 @@ export function createApp(config: Config, options: AppOptions = {}): { app: Expr
     res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'");
     res.type("html").send(SOLAR_CARD_HTML);
   });
-  registerAuth(app, config, store);
+  registerAuth(app, config, store, signer);
 
   app.all("/mcp", async (req, res) => {
     const origin = req.header("origin");
@@ -118,7 +123,29 @@ export function createApp(config: Config, options: AppOptions = {}): { app: Expr
       res.status(405).json({ error: "method_not_allowed" });
       return;
     }
-    if (!(await readBearer(config, store, req, res))) return;
+    if (!(await readBearer(config, store, req, res, signer))) return;
+
+    if (config.stateless) {
+      // Serverless: a fresh server and transport per request, no Mcp-Session-Id.
+      if (req.method !== "POST") {
+        res.status(405).set("allow", "POST").json({ jsonrpc: "2.0", error: { code: -32000, message: "Stateless server: use POST." }, id: null });
+        return;
+      }
+      try {
+        const server = buildServer(deps);
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+        res.on("close", () => {
+          void transport.close();
+          void server.close();
+        });
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+      } catch (error) {
+        console.log(JSON.stringify({ level: "error", path: "/mcp", message: error instanceof Error ? error.message : "unknown" }));
+        if (!res.headersSent) res.status(500).json({ jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null });
+      }
+      return;
+    }
 
     const sessionId = req.header("mcp-session-id");
     try {

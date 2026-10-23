@@ -136,6 +136,13 @@ async function rpc(message) {
   const sid = response.headers.get("mcp-session-id");
   if (sid) state.sessionId = sid;
   if (response.status === 202) return null;
+  if (response.status === 401) {
+    state.token = "";
+    state.initialized = false;
+    sessionStorage.removeItem("sol-solar-token");
+    connect.textContent = "Connect this browser";
+    throw new Error("The connection expired. Tap Connect this browser, then ask again.");
+  }
   const type = response.headers.get("content-type") || "";
   const raw = await response.text();
   if (!response.ok) throw new Error(raw || `HTTP ${response.status}`);
@@ -155,7 +162,7 @@ async function rpc(message) {
 }
 
 async function ensureSession() {
-  if (state.sessionId) return;
+  if (state.sessionId || state.initialized) return;
   const initialized = await rpc({
     jsonrpc: "2.0",
     id: state.nextId++,
@@ -176,6 +183,8 @@ async function ensureSession() {
     if (uri) state.uiTools[tool.name] = uri;
   }
   addTrace(`tools/list → ${tools.length} tools, ${Object.keys(state.uiTools).length} with an MCP App view`);
+  state.initialized = true;
+  if (!state.sessionId) addTrace("stateless server: no Mcp-Session-Id, the household travels in site_id");
 }
 
 async function readUiResource(uri) {
@@ -323,7 +332,10 @@ async function ask(kind) {
     }
     rememberSite(remembered.data.site_id);
     let result = remembered;
-    if (kind === "remember") result = await callTool("remember_household_appliances", householdArgs());
+    if (kind === "remember") {
+      result = await callTool("remember_household_appliances", householdArgs());
+      rememberSite(result.data.site_id);
+    }
     if (kind === "saved-wash") result = await callTool("best_time_for_appliance", savedApplianceArgs());
     if (kind === "saved-day") result = await callTool("plan_the_solar_day", siteArgs());
     if (kind === "outage") result = await callTool("battery_through_the_night", batteryArgs());

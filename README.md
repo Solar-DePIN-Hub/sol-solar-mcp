@@ -20,7 +20,8 @@ Author: Vadym Bilobrovets, solo, Ukraine. The repository was created on 17 Octob
 
 - **MCP App card.** The five tools that draw a day chart declare `_meta.ui.resourceUri = ui://sol-solar/solar-card.html`. The resource is one self-contained HTML document served as `text/html;profile=mcp-app` ([MCP Apps, SEP-1865](https://modelcontextprotocol.io/extensions/apps/overview)). It runs the `ui/initialize` handshake and renders `ui/notifications/tool-result`: hourly bars, the chosen window, the day plan, and a battery gauge. It makes no network calls. A screen device can show it next to the spoken answer.
 - **The voice client is now a small MCP Apps host.** It declares the `io.modelcontextprotocol/ui` extension in `initialize`, reads `tools/list` to find which tools have a view, calls `resources/read` on the `ui://` resource, and renders the card in a sandboxed iframe. The page's own CSP blocks inline script, so the iframe loads the byte-identical copy at `/ui/solar-card.html`. A test checks that the two are identical.
-- **Household memory across sessions.** New tool `remember_household_appliances` saves the appliances a person describes once ("washer, 0.7 kW, 2 hours"). Sites are written to the key-value store under `site:<id>` for 90 days. A new MCP session that only knows the `site_id` can ask "when should I run the washer?" with no numbers, or "plan my appliances" with no list. With `TOKEN_STORE=dynamodb` this survives restarts. On the Vercel deployment the store is in memory, so it lasts as long as the server instance.
+- **Household memory across sessions.** New tool `remember_household_appliances` saves the appliances a person describes once ("washer, 0.7 kW, 2 hours"). Sites are written to the key-value store under `site:<id>` for 90 days. A new MCP session that only knows the `site_id` can ask "when should I run the washer?" with no numbers, or "plan my appliances" with no list. With `TOKEN_STORE=dynamodb` this survives restarts. On Vercel, stateless mode puts the household inside a signed `site_id` instead (see below), so it works on any instance until the next deployment rotates the key.
+- **Stateless mode for serverless.** `MCP_STATELESS=1` (set by `api/index.js`) signs OAuth codes, access tokens and site ids with HMAC-SHA256 and one key per deployment (`dist/signing-key.txt`, written at build time, never committed or served). `/mcp` then creates a fresh server and transport per POST, without `Mcp-Session-Id`. A test starts two app instances with the same key and checks that the second accepts the first one's token and household, and rejects a tampered `site_id` and token.
 - **Real voice in the browser.** "Ask by voice" uses the browser's speech recognition to pick a question, and the answer is read aloud with `speechSynthesis`. Tapping a question still works where speech recognition is missing.
 
 ## Quick start
@@ -77,7 +78,7 @@ The server imports and uses `@modelcontextprotocol/sdk` (`McpServer`, `Streamabl
 
 A prompt, `answer_solar_question`, tells a client to say the tool text and not invent numbers.
 
-Follow-up calls in the same MCP session can omit the place. Every tool returns `site_id`. A later session can pass it back and get the same home and its saved appliances. Sites live in the key-value store for 90 days: DynamoDB when `TOKEN_STORE=dynamodb`, otherwise process memory, which a restart clears.
+Follow-up calls in the same MCP session can omit the place. Every tool returns `site_id`. A later session can pass it back and get the same home and its saved appliances. Sites live in the key-value store for 90 days: DynamoDB when `TOKEN_STORE=dynamodb`, otherwise process memory, which a restart clears. In stateless mode the `site_id` is the signed site itself; it changes when you save appliances, so use the latest one.
 
 Resource: `ui://sol-solar/solar-card.html` (`text/html;profile=mcp-app`). Linked from `forecast_pv_production`, `best_time_for_appliance`, `daily_solar_briefing`, `plan_the_solar_day`, and `battery_through_the_night`.
 
@@ -177,7 +178,7 @@ docker build -t sol-solar-mcp .
 docker run --rm -p 8787:8787 sol-solar-mcp
 ```
 
-AWS Lambda, a function URL, and DynamoDB are described in [docs/AWS.md](docs/AWS.md). The template is `infra/template.yaml`. It was not deployed. The hackathon's AWS credit request form closed on 7 October 2026. An AWS account opened during the hackathon was put under review by AWS before anything could be deployed, and it is now closed. The live endpoint is therefore on Vercel: same `createApp`, wrapped by `api/index.js`, with the in-memory store.
+AWS Lambda, a function URL, and DynamoDB are described in [docs/AWS.md](docs/AWS.md). The template is `infra/template.yaml`. It was not deployed. The hackathon's AWS credit request form closed on 7 October 2026. An AWS account opened during the hackathon was put under review by AWS before anything could be deployed, and it is now closed. The live endpoint is therefore on Vercel: same `createApp`, wrapped by `api/index.js`, in stateless mode.
 
 | Variable | Default | Role |
 | --- | --- | --- |
@@ -188,6 +189,8 @@ AWS Lambda, a function URL, and DynamoDB are described in [docs/AWS.md](docs/AWS
 | `OAUTH_REDIRECT_URIS` | local demo URLs outside production | Extra exact redirect URIs |
 | `DEV_BEARER_TOKEN` | unset | Optional static bearer for local curl |
 | `TOKEN_STORE` | `memory` | `dynamodb` switches the cache and tokens |
+| `MCP_STATELESS` | off (on in `api/index.js`) | signed codes, tokens and site ids; one MCP transport per request |
+| `SIGNING_KEY` | none | 32+ characters; `api/index.js` reads `dist/signing-key.txt` |
 | `DYNAMODB_TABLE` | unset | Required with DynamoDB |
 | `AWS_REGION` | `eu-central-1` | Region for the DynamoDB client |
 | `FORECAST_TTL_SECONDS` | `1800` | Forecast cache |
@@ -207,7 +210,7 @@ npm run typecheck
 npm run test:live
 ```
 
-19 tests. The suite covers the yield model, the window picker (including the recorded dim-day shape used as a fixture), speech that omits money when no price was typed, PKCE S256 against the RFC 7636 test vector, the DynamoDB item shape with a fake client, and a Streamable HTTP session: `401` without `WWW-Authenticate`, metadata that lists `S256`, a rejected query-string token, a rejected foreign `Origin`, tool listing, a spoken wash answer, and a follow-up that remembers the site. A second session test reads the `ui://` card over MCP, checks its MIME type and handshake, checks that `/ui/solar-card.html` is byte-identical with a locked-down CSP, saves two appliances, then opens a new MCP session that asks about "the washer" and plans the saved appliances using only the `site_id`.
+20 tests. The suite covers the yield model, the window picker (including the recorded dim-day shape used as a fixture), speech that omits money when no price was typed, PKCE S256 against the RFC 7636 test vector, the DynamoDB item shape with a fake client, and a Streamable HTTP session: `401` without `WWW-Authenticate`, metadata that lists `S256`, a rejected query-string token, a rejected foreign `Origin`, tool listing, a spoken wash answer, and a follow-up that remembers the site. A second session test reads the `ui://` card over MCP, checks its MIME type and handshake, checks that `/ui/solar-card.html` is byte-identical with a locked-down CSP, saves two appliances, then opens a new MCP session that asks about "the washer" and plans the saved appliances using only the `site_id`. A stateless test runs two instances with one signing key.
 
 ## Track
 

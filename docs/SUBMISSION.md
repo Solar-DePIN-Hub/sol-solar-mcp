@@ -227,8 +227,8 @@ Why it matters: a household or a small solar node can ask when to use the roof, 
 - Task: keep the live endpoint up without AWS.
 - Steps: wrapped `createApp` for Vercel in `api/index.js`. The first Vercel build, for commit `0ff49a7`, failed; commit `2ef3db7` added `api/index.js` and `vercel.json` and deployed.
 - Expected: a follow-up call finds its session and its site.
-- Actual: Streamable HTTP sessions and the in-memory site store live in one process. A follow-up can land on a fresh instance.
+- Actual: Streamable HTTP sessions, OAuth tokens and the in-memory site store live in one process. A follow-up can land on a fresh instance. On 23 October the live browser flow returned `401 invalid_token` for this reason.
 - Severity: annoying.
-- Workaround: every tool returns `site_id`, sites are written to the key-value store, and the browser client re-sends the place if a saved site is gone. With `TOKEN_STORE=dynamodb` the sites survive restarts.
+- Workaround: a stateless mode (`MCP_STATELESS=1`, on by default in `api/index.js`). OAuth codes, access tokens and site ids are HMAC-SHA256 signed with one key per deployment, written at build time, so any instance can verify them without a shared store. The MCP route builds a fresh server and transport per POST with no `Mcp-Session-Id`. The `site_id` carries the signed household, so it changes when the household changes. A new deployment rotates the key, so old tokens and site ids stop working and the browser client asks to reconnect or re-sends the place. With `TOKEN_STORE=dynamodb` the stateful mode keeps everything in DynamoDB instead.
 - Suggestion: an Alexa+ note on whether the platform keeps `Mcp-Session-Id` across turns, or expects stateless servers.
 
