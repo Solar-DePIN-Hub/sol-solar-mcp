@@ -229,7 +229,7 @@ export function speakBriefing(input: {
 }
 
 function listRuns(runs: ScheduledRun[], timeZone: string): string {
-  const parts = runs.map((run) => `the ${run.name} from ${speakClock(run.start, timeZone)} to ${speakClock(run.end, timeZone)}`);
+  const parts = [...runs].sort((a, b) => a.start.getTime() - b.start.getTime()).map((run) => `the ${run.name} from ${speakClock(run.start, timeZone)} to ${speakClock(run.end, timeZone)}`);
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0] ?? "";
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;

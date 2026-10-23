@@ -195,6 +195,7 @@ export function createApp(config: Config, options: AppOptions = {}): { app: Expr
     }
   });
 
+  app.get("/favicon.ico", (_req, res) => res.redirect(301, "/favicon.svg"));
   app.use(express.static(path.join(process.cwd(), "web")));
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
