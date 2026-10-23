@@ -1,6 +1,6 @@
 {
   "name": "sol-solar-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Self-hosted MCP server that answers home solar questions for Alexa+. Built for the Amazon Developer Hackathon 2026.",
   "type": "module",
   "license": "MIT",

@@ -168,8 +168,11 @@ describe("MCP server", () => {
         "estimate_savings",
         "forecast_pv_production",
         "plan_the_solar_day",
+        "remember_household_appliances",
         "remember_solar_site",
       ]);
+      const withCard = tools.tools.filter((tool) => (tool._meta as { ui?: { resourceUri?: string } } | undefined)?.ui?.resourceUri === "ui://sol-solar/solar-card.html");
+      assert.equal(withCard.length, 5);
       const site = await client.callTool({
         name: "remember_solar_site",
         arguments: { place: "Kyiv", system_kw: 5, tilt_degrees: 35, azimuth_degrees: 0 },
@@ -197,6 +200,63 @@ describe("MCP server", () => {
       const prompt = await client.getPrompt({ name: "answer_solar_question", arguments: { question: "When should I run the washing machine?" } });
       assert.match(prompt.messages[0]?.content.type === "text" ? prompt.messages[0].content.text : "", /washing machine/);
       await client.close();
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  it("serves the MCP App card and keeps a household across MCP sessions", async () => {
+    const ctx = await start(mockFetch());
+    try {
+      const token = await mint(ctx.base, ctx.resource);
+      const connect = async () => {
+        const transport = new StreamableHTTPClientTransport(new URL(ctx.resource), {
+          requestInit: { headers: { authorization: `Bearer ${token}` } },
+        });
+        const client = new Client({ name: "sol-solar-test", version: "1.0.0" });
+        await client.connect(transport);
+        return client;
+      };
+      const first = await connect();
+      const resources = await first.listResources();
+      assert.ok(resources.resources.some((item) => item.uri === "ui://sol-solar/solar-card.html"));
+      const card = await first.readResource({ uri: "ui://sol-solar/solar-card.html" });
+      const content = card.contents[0] as { mimeType?: string; text?: string };
+      assert.equal(content.mimeType, "text/html;profile=mcp-app");
+      assert.match(content.text ?? "", /ui\/initialize/);
+      assert.match(content.text ?? "", /ui\/notifications\/tool-result/);
+      const mirror = await fetch(`${ctx.base}/ui/solar-card.html`);
+      assert.equal(await mirror.text(), content.text);
+      assert.match(mirror.headers.get("content-security-policy") ?? "", /default-src 'none'/);
+
+      const site = await first.callTool({ name: "remember_solar_site", arguments: { place: "Kyiv", system_kw: 5, tilt_degrees: 35, azimuth_degrees: 0 } });
+      const siteId = (site as { structuredContent?: { site_id?: string } }).structuredContent?.site_id;
+      assert.ok(siteId);
+      const saved = await first.callTool({
+        name: "remember_household_appliances",
+        arguments: { site_id: siteId, appliances: [
+          { name: "washing machine", power_kw: 0.7, duration_hours: 2 },
+          { name: "dishwasher", power_kw: 1, duration_hours: 1 },
+        ] },
+      });
+      assert.match(spoken(saved), /Saved for Kyiv, Ukraine/);
+      assert.match(spoken(saved), /not read from a meter/);
+      await first.close();
+
+      // A brand-new MCP session only knows the site_id.
+      const second = await connect();
+      const answer = await second.callTool({ name: "best_time_for_appliance", arguments: { site_id: siteId, appliance_name: "Washing Machine" } });
+      assert.match(spoken(answer), /Run the Washing Machine|Run the washing machine/i);
+      assert.match(spoken(answer), /power and duration you saved/);
+      assert.equal((answer as { structuredContent?: { used_saved_appliance?: boolean } }).structuredContent?.used_saved_appliance, true);
+      const plan = await second.callTool({ name: "plan_the_solar_day", arguments: { site_id: siteId } });
+      assert.doesNotMatch(spoken(plan), /NaN|undefined/);
+      const runs = (plan as { structuredContent?: { runs?: unknown[]; unscheduled?: string[] } }).structuredContent;
+      assert.equal((runs?.runs?.length ?? 0) + (runs?.unscheduled?.length ?? 0), 2);
+      const unknown = await second.callTool({ name: "best_time_for_appliance", arguments: { site_id: siteId, appliance_name: "kettle" } });
+      assert.equal((unknown as { isError?: boolean }).isError, true);
+      assert.match(spoken(unknown), /kettle's power/);
+      await second.close();
     } finally {
       await ctx.close();
     }

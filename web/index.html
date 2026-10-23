@@ -26,7 +26,12 @@
 
   <main>
     <section class="ask" aria-label="Questions">
-      <p class="prompt-label">Ask as you would ask a voice assistant</p>
+      <div class="voice">
+        <button id="mic" type="button" class="mic" aria-label="Ask by voice">🎙 Ask by voice</button>
+        <label class="speak"><input id="speak" type="checkbox" checked> Speak answers</label>
+        <span id="heard" class="heard" aria-live="polite"></span>
+      </div>
+      <p class="prompt-label">Or tap a question, as you would say it to a voice assistant</p>
       <div class="chips">
         <button type="button" data-ask="outage">Will my battery last through tonight?</button>
         <button type="button" data-ask="wash">When should I run the washing machine today?</button>
@@ -35,6 +40,13 @@
         <button type="button" data-ask="forecast">How much will the roof make today and tomorrow?</button>
         <button type="button" data-ask="savings">What do I save against a 7 PM start?</button>
       </div>
+      <p class="prompt-label">Household memory, kept with your site between sessions</p>
+      <div class="chips">
+        <button type="button" data-ask="remember">Remember my washer, dishwasher, and car.</button>
+        <button type="button" data-ask="saved-wash">When should I run the washer? (saved)</button>
+        <button type="button" data-ask="saved-day">Plan my saved appliances.</button>
+      </div>
+      <p id="memory" class="memory"></p>
     </section>
 
     <section class="stage">
@@ -44,7 +56,7 @@
         <p id="rest">The words come from the tool. This page does not call a language model, so it cannot invent a kilowatt-hour.</p>
       </article>
       <aside class="roof" aria-label="Expected production">
-        <h2>Expected production</h2>
+        <h2>Solar card <small class="muted">MCP App view</small></h2>
         <div id="charts" class="charts"><p class="muted">The day's shape appears after a question.</p></div>
       </aside>
     </section>

@@ -14,6 +14,15 @@ The browser client, after OAuth PKCE, on that same day:
 
 Author: Vadym Bilobrovets, solo, Ukraine. The repository was created on 17 October 2026. This server was written during the hackathon submission window.
 
+**Live:** https://sol-solar-mcp.vercel.app (voice client at `/`, MCP endpoint `/mcp`, health `/health`). Vercel hosts the same Express app. See [Run and deploy](#run-and-deploy) for the AWS path.
+
+## New in 1.1 (23 October 2026)
+
+- **MCP App card.** The five tools that draw a day chart declare `_meta.ui.resourceUri = ui://sol-solar/solar-card.html`. The resource is one self-contained HTML document served as `text/html;profile=mcp-app` ([MCP Apps, SEP-1865](https://modelcontextprotocol.io/extensions/apps/overview)). It runs the `ui/initialize` handshake and renders `ui/notifications/tool-result`: hourly bars, the chosen window, the day plan, and a battery gauge. It makes no network calls. A screen device can show it next to the spoken answer.
+- **The voice client is now a small MCP Apps host.** It declares the `io.modelcontextprotocol/ui` extension in `initialize`, reads `tools/list` to find which tools have a view, calls `resources/read` on the `ui://` resource, and renders the card in a sandboxed iframe. The page's own CSP blocks inline script, so the iframe loads the byte-identical copy at `/ui/solar-card.html`. A test checks that the two are identical.
+- **Household memory across sessions.** New tool `remember_household_appliances` saves the appliances a person describes once ("washer, 0.7 kW, 2 hours"). Sites are written to the key-value store under `site:<id>` for 90 days. A new MCP session that only knows the `site_id` can ask "when should I run the washer?" with no numbers, or "plan my appliances" with no list. With `TOKEN_STORE=dynamodb` this survives restarts. On the Vercel deployment the store is in memory, so it lasts as long as the server instance.
+- **Real voice in the browser.** "Ask by voice" uses the browser's speech recognition to pick a question, and the answer is read aloud with `speechSynthesis`. Tapping a question still works where speech recognition is missing.
+
 ## Quick start
 
 ```bash
@@ -39,7 +48,9 @@ flowchart LR
   person[Person] --> client[Voice client]
   client -->|"Streamable HTTP, MCP 2025-11-25"| mcp[Sol Solar]
   mcp --> auth[OAuth 2.1 PKCE S256]
-  mcp --> tools[Seven tools]
+  mcp --> tools[Eight tools]
+  mcp --> card["MCP App card (ui://)"]
+  card -. rendered by .-> client
   tools --> meteo[Open-Meteo forecast and geocoding]
   tools --> pvgis[PVGIS 5.3 typical year]
   tools --> model[Yield model and appliance window]
@@ -47,7 +58,7 @@ flowchart LR
   mcp -. container or Lambda .-> aws[App Runner or Lambda function URL]
 ```
 
-The browser page is a real MCP client. It sends `initialize`, `notifications/initialized`, and `tools/call` to `POST /mcp`. It speaks the tool's text. It does not call a language model, so the kilowatt-hours cannot be invented by one.
+The browser page is a real MCP client. It sends `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, and `resources/read` to `POST /mcp`. It reads the tool's text aloud and renders the MCP App card. It does not call a language model, so the kilowatt-hours cannot be invented by one.
 
 The server imports and uses `@modelcontextprotocol/sdk` (`McpServer`, `StreamableHTTPServerTransport`, and, in `src/demo.ts` and the tests, `Client` with `StreamableHTTPClientTransport`). The negotiated protocol version in this SDK release is `2025-11-25`.
 
@@ -61,11 +72,14 @@ The server imports and uses `@modelcontextprotocol/sdk` (`McpServer`, `Streamabl
 | `estimate_savings` | "What do I save against 7 PM?" | Grid kilowatt-hours avoided. Money only if you typed a price. |
 | `daily_solar_briefing` | "Good morning. When is the solar window?" | Leads with the strongest stretch. If that stretch is thin, it says so. Names a cloudy run when Open-Meteo cloud cover supports one. |
 | `plan_the_solar_day` | "Plan the dishwasher, the washer, and the car." | Places several loads. Two share an hour only when their combined power fits under that hour's forecast. |
+| `remember_household_appliances` | "Remember my washer: 0.7 kilowatts, 2 hours." | Saves up to 8 appliances with the site, so later questions and later sessions can say "the washer" without numbers. |
 | `battery_through_the_night` | "Will my battery last through tonight?" | Uses a capacity, charge, and household load you type. Says if that charge reaches sunrise, and whether the forecast can refill the battery. |
 
 A prompt, `answer_solar_question`, tells a client to say the tool text and not invent numbers.
 
-Follow-up calls in the same MCP session can omit the place. The tool also returns `site_id` for clients that do not keep a session. Memory is in the server process unless `TOKEN_STORE=dynamodb`. A restart clears it.
+Follow-up calls in the same MCP session can omit the place. Every tool returns `site_id`. A later session can pass it back and get the same home and its saved appliances. Sites live in the key-value store for 90 days: DynamoDB when `TOKEN_STORE=dynamodb`, otherwise process memory, which a restart clears.
+
+Resource: `ui://sol-solar/solar-card.html` (`text/html;profile=mcp-app`). Linked from `forecast_pv_production`, `best_time_for_appliance`, `daily_solar_briefing`, `plan_the_solar_day`, and `battery_through_the_night`.
 
 ## Example output
 
@@ -163,7 +177,7 @@ docker build -t sol-solar-mcp .
 docker run --rm -p 8787:8787 sol-solar-mcp
 ```
 
-AWS Lambda, a function URL, and DynamoDB are described in [docs/AWS.md](docs/AWS.md). The template is `infra/template.yaml`. It was not deployed from this environment. The hackathon's AWS credit request form closed on 7 October 2026, and no AWS account was configured here.
+AWS Lambda, a function URL, and DynamoDB are described in [docs/AWS.md](docs/AWS.md). The template is `infra/template.yaml`. It was not deployed. The hackathon's AWS credit request form closed on 7 October 2026. An AWS account opened during the hackathon was put under review by AWS before anything could be deployed, and it is now closed. The live endpoint is therefore on Vercel: same `createApp`, wrapped by `api/index.js`, with the in-memory store.
 
 | Variable | Default | Role |
 | --- | --- | --- |
@@ -193,7 +207,7 @@ npm run typecheck
 npm run test:live
 ```
 
-The suite covers the yield model, the window picker (including the recorded dim-day shape used as a fixture), speech that omits money when no price was typed, PKCE S256 against the RFC 7636 test vector, the DynamoDB item shape with a fake client, and a Streamable HTTP session: `401` without `WWW-Authenticate`, metadata that lists `S256`, a rejected query-string token, a rejected foreign `Origin`, tool listing, a spoken wash answer, and a follow-up that remembers the site.
+19 tests. The suite covers the yield model, the window picker (including the recorded dim-day shape used as a fixture), speech that omits money when no price was typed, PKCE S256 against the RFC 7636 test vector, the DynamoDB item shape with a fake client, and a Streamable HTTP session: `401` without `WWW-Authenticate`, metadata that lists `S256`, a rejected query-string token, a rejected foreign `Origin`, tool listing, a spoken wash answer, and a follow-up that remembers the site. A second session test reads the `ui://` card over MCP, checks its MIME type and handshake, checks that `/ui/solar-card.html` is byte-identical with a locked-down CSP, saves two appliances, then opens a new MCP session that asks about "the washer" and plans the saved appliances using only the `site_id`.
 
 ## Track
 

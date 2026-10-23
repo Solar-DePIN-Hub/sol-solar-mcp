@@ -64,7 +64,7 @@ Open-Meteo's free API is non-commercial. That fits a hackathon and home automati
 
 ## Accomplishments
 
-- Seven tools with spoken answers, input validation, and tests, including a multi-appliance day plan, a night-battery check, and a morning briefing.
+- Eight tools with spoken answers, input validation, and tests, including a multi-appliance day plan, a night-battery check, and a morning briefing.
 - A live answer for Kyiv that uses both a forecast and a typical year, and that recommends waiting when today is too dark.
 - Session memory, so a follow-up does not have to repeat the city.
 - An OAuth surface that matches the published Alexa+ checklist, exercised by the tests.
@@ -140,7 +140,7 @@ Kiro was not used.
 
 What I did: created this repository on 17 October 2026 and wrote the server, the voice client, the tests, and the MIT licence during the hackathon window. The licence file is `LICENSE`.
 
-How it works: a Streamable HTTP MCP server with five solar tools, described in the README.
+How it works: a Streamable HTTP MCP server with eight solar tools and one MCP App resource (`ui://sol-solar/solar-card.html`), described in the README.
 
 Why it matters: a household or a small solar node can ask when to use the roof, in speech, without an API key and without a closed voice platform. The licence lets someone else host it.
 
@@ -192,6 +192,16 @@ Why it matters: a household or a small solar node can ask when to use the roof, 
 - Workaround: code, template, and a unit test of the DynamoDB item shape. Documented as not deployed.
 - Suggestion: keep a small credit pool for the last two weeks, or judge the mini-challenge on a deploy log only when credits exist.
 
+### 4b. The AWS account went under review
+
+- Task: deploy `infra/template.yaml` with my own account after the credits were gone.
+- Steps: opened an AWS account during the hackathon.
+- Expected: deploy the Lambda function URL and the DynamoDB table.
+- Actual: AWS put the new account under review before anything could be deployed. The account is now closed. Nothing ran on AWS.
+- Severity: important.
+- Workaround: the same Express app on Vercel (`api/index.js`) as the live endpoint, with the in-memory store. The SAM template and the DynamoDB store stay in the repository.
+- Suggestion: a participant sandbox account with a spend cap, so new accounts are not blocked during a deadline week.
+
 ### 5. PVGIS cannot be called from the browser
 
 - Task: show a typical-year number next to the forecast.
@@ -201,3 +211,24 @@ Why it matters: a household or a small solar node can ask when to use the roof, 
 - Severity: low.
 - Workaround: the MCP server calls PVGIS. The browser only talks to `/mcp`.
 - Suggestion: none for JRC. For the hackathon docs, one sentence that some science APIs must be proxied would save a failed front end.
+
+### 6. No way to preview an MCP App on an Alexa+ screen
+
+- Task: add a visual card for screen devices, because the judging criteria name cards and MCP Apps as creative Alexa+ work.
+- Steps: read the MCP Apps extension (SEP-1865), added a `ui://` resource with `text/html;profile=mcp-app`, linked it from five tools with `_meta.ui.resourceUri`.
+- Expected: a way to see how an Alexa+ device renders the resource, what size and theme it passes in `hostContext`, and which display modes it supports.
+- Actual: no public Alexa+ host or simulator, so no way to check. I wrote a small host inside the browser client (sandboxed iframe, `ui/initialize`, `ui/notifications/tool-result`, `size-changed`).
+- Severity: important.
+- Workaround: the card makes no network calls, follows the host theme, and reports its height.
+- Suggestion: document the Alexa+ MCP Apps host profile (display modes, size limits, theme variables) before the toolkit opens.
+
+### 7. MCP sessions on a serverless fallback
+
+- Task: keep the live endpoint up without AWS.
+- Steps: wrapped `createApp` for Vercel in `api/index.js`. The first Vercel build, for commit `0ff49a7`, failed; commit `2ef3db7` added `api/index.js` and `vercel.json` and deployed.
+- Expected: a follow-up call finds its session and its site.
+- Actual: Streamable HTTP sessions and the in-memory site store live in one process. A follow-up can land on a fresh instance.
+- Severity: annoying.
+- Workaround: every tool returns `site_id`, sites are written to the key-value store, and the browser client re-sends the place if a saved site is gone. With `TOKEN_STORE=dynamodb` the sites survive restarts.
+- Suggestion: an Alexa+ note on whether the platform keeps `Mcp-Session-Id` across turns, or expects stateless servers.
+

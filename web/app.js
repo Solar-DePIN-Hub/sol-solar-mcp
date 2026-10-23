@@ -4,8 +4,11 @@ const state = {
   protocolVersion: "2025-11-25",
   resource: "",
   clientId: "sol-solar-web",
-  siteId: "",
+  siteId: localStorage.getItem("sol-solar-site") || "",
   nextId: 1,
+  uiTools: {},
+  uiRead: {},
+  speak: localStorage.getItem("sol-solar-speak") !== "off",
 };
 
 const headline = document.querySelector("#headline");
@@ -14,6 +17,10 @@ const kicker = document.querySelector("#kicker");
 const charts = document.querySelector("#charts");
 const trace = document.querySelector("#trace");
 const connect = document.querySelector("#connect");
+const mic = document.querySelector("#mic");
+const heard = document.querySelector("#heard");
+const speakToggle = document.querySelector("#speak");
+const memory = document.querySelector("#memory");
 
 function field(id) {
   return document.querySelector(id).value.trim();
@@ -34,8 +41,9 @@ function addTrace(line) {
 
 function splitSpoken(spoken) {
   const parts = spoken.split(/(?<=\.)\s+/);
-  headline.textContent = parts[0] || spoken;
-  rest.textContent = parts.slice(1).join(" ");
+  const take = (parts[0] || "").length < 16 && parts.length > 1 ? 2 : 1;
+  headline.textContent = parts.slice(0, take).join(" ") || spoken;
+  rest.textContent = parts.slice(take).join(" ");
   headline.classList.toggle("is-error", /couldn't|don't|isn't a strong|out of range|Tell me/i.test(spoken));
 }
 
@@ -65,6 +73,21 @@ function batteryArgs() {
   };
 }
 
+function householdArgs() {
+  return {
+    ...siteArgs(),
+    appliances: [
+      { name: field("#appliance") || "washing machine", power_kw: numberField("#power"), duration_hours: numberField("#duration") },
+      { name: "dishwasher", power_kw: 1, duration_hours: 1 },
+      { name: "car charging", power_kw: 1.4, duration_hours: 3 },
+    ],
+  };
+}
+
+function savedApplianceArgs() {
+  return { ...siteArgs(), appliance_name: field("#appliance") || "washing machine" };
+}
+
 function dayPlanArgs() {
   return {
     ...siteArgs(),
@@ -87,7 +110,7 @@ function applianceArgs() {
 
 function validate(kind) {
   if (!field("#place") || numberField("#system") === undefined) return "Add a city and an array size first.";
-  if ((kind === "wash" || kind === "savings" || kind === "day") && (numberField("#power") === undefined || numberField("#duration") === undefined)) {
+  if ((kind === "wash" || kind === "savings" || kind === "day" || kind === "remember") && (numberField("#power") === undefined || numberField("#duration") === undefined)) {
     return "Add the appliance power and hours. They are assumptions, not a meter reading.";
   }
   if (kind === "outage" && (numberField("#battery") === undefined || numberField("#charge") === undefined || numberField("#load") === undefined)) {
@@ -139,13 +162,79 @@ async function ensureSession() {
     method: "initialize",
     params: {
       protocolVersion: "2025-11-25",
-      capabilities: {},
-      clientInfo: { name: "sol-solar-web", version: "1.0.0" },
+      capabilities: { extensions: { "io.modelcontextprotocol/ui": { mimeTypes: ["text/html;profile=mcp-app"] } } },
+      clientInfo: { name: "sol-solar-web", version: "1.1.0" },
     },
   });
   state.protocolVersion = initialized?.result?.protocolVersion || state.protocolVersion;
   addTrace(`initialize → protocol ${state.protocolVersion}, transport Streamable HTTP`);
   await rpc({ jsonrpc: "2.0", method: "notifications/initialized" });
+  const listed = await rpc({ jsonrpc: "2.0", id: state.nextId++, method: "tools/list", params: {} });
+  const tools = listed?.result?.tools || [];
+  for (const tool of tools) {
+    const uri = tool._meta?.ui?.resourceUri;
+    if (uri) state.uiTools[tool.name] = uri;
+  }
+  addTrace(`tools/list → ${tools.length} tools, ${Object.keys(state.uiTools).length} with an MCP App view`);
+}
+
+async function readUiResource(uri) {
+  if (state.uiRead[uri]) return;
+  const message = await rpc({ jsonrpc: "2.0", id: state.nextId++, method: "resources/read", params: { uri } });
+  const content = message?.result?.contents?.[0];
+  if (!content) throw new Error("The MCP App resource was empty.");
+  state.uiRead[uri] = true;
+  addTrace(`resources/read ${uri} → ${content.mimeType}, ${content.text.length} characters`);
+}
+
+// Minimal MCP Apps host: one sandboxed iframe per tool result.
+function showCard(args, result) {
+  charts.replaceChildren();
+  const frame = document.createElement("iframe");
+  frame.className = "app-frame";
+  frame.title = "Sol Solar card (MCP App)";
+  frame.setAttribute("sandbox", "allow-scripts");
+  frame.src = "/ui/solar-card.html";
+  const onMessage = (event) => {
+    if (event.source !== frame.contentWindow) return;
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+    const reply = (body) => frame.contentWindow.postMessage({ jsonrpc: "2.0", id: msg.id, ...body }, "*");
+    if (msg.method === "ui/initialize") {
+      reply({ result: {
+        protocolVersion: "2026-01-26",
+        hostInfo: { name: "sol-solar-web", version: "1.1.0" },
+        hostCapabilities: {},
+        hostContext: { theme: "dark", displayMode: "inline", availableDisplayModes: ["inline"] },
+      } });
+    } else if (msg.method === "ui/notifications/initialized") {
+      frame.contentWindow.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-input", params: { arguments: args } }, "*");
+      frame.contentWindow.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: result }, "*");
+      addTrace("ui/notifications/tool-result → MCP App card");
+    } else if (msg.method === "ui/notifications/size-changed" && msg.params?.height) {
+      frame.style.height = `${Math.min(900, Math.ceil(msg.params.height) + 4)}px`;
+    } else if (msg.id !== undefined && msg.method) {
+      reply({ error: { code: -32601, message: "Not supported by this host" } });
+    }
+  };
+  window.addEventListener("message", onMessage);
+  frame.addEventListener("load", () => undefined, { once: true });
+  charts.append(frame);
+}
+
+function say(text) {
+  if (!state.speak || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  utterance.rate = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function rememberSite(id) {
+  if (!id) return;
+  state.siteId = id;
+  localStorage.setItem("sol-solar-site", id);
 }
 
 async function callTool(name, args) {
@@ -161,7 +250,7 @@ async function callTool(name, args) {
   const result = message?.result;
   if (!result) throw new Error("The tool returned no result.");
   const spoken = (result.content || []).filter((item) => item.type === "text").map((item) => item.text).join(" ");
-  return { spoken, data: result.structuredContent || {}, isError: Boolean(result.isError) };
+  return { name, args, raw: result, spoken, data: result.structuredContent || {}, isError: Boolean(result.isError) };
 }
 
 function draw(data) {
@@ -225,9 +314,18 @@ async function ask(kind) {
   headline.textContent = "Looking up the roof…";
   rest.textContent = "";
   try {
-    const remembered = await callTool("remember_solar_site", siteArgs());
-    state.siteId = remembered.data.site_id || state.siteId;
+    let remembered = await callTool("remember_solar_site", siteArgs());
+    if (remembered.isError && state.siteId) {
+      // The saved household is gone (for example a fresh serverless instance). Start a new one from the form.
+      state.siteId = "";
+      localStorage.removeItem("sol-solar-site");
+      remembered = await callTool("remember_solar_site", siteArgs());
+    }
+    rememberSite(remembered.data.site_id);
     let result = remembered;
+    if (kind === "remember") result = await callTool("remember_household_appliances", householdArgs());
+    if (kind === "saved-wash") result = await callTool("best_time_for_appliance", savedApplianceArgs());
+    if (kind === "saved-day") result = await callTool("plan_the_solar_day", siteArgs());
     if (kind === "outage") result = await callTool("battery_through_the_night", batteryArgs());
     if (kind === "wash") result = await callTool("best_time_for_appliance", applianceArgs());
     if (kind === "day") result = await callTool("plan_the_solar_day", dayPlanArgs());
@@ -245,9 +343,18 @@ async function ask(kind) {
     };
     if (typeof result.data.lasts === "boolean") kicker.textContent = result.data.lasts ? "It should last the night" : "It runs out overnight";
     else kicker.textContent = kickers[result.data.decision] || kickers[result.data.day] || "Spoken answer";
+    if (result.isError) kicker.textContent = "Need one more detail";
     splitSpoken(result.spoken);
+    say(result.spoken);
+    if (result.data.appliances) memory.textContent = `Saved for this home: ${result.data.appliances.map((item) => item.name).join(", ")}. Ask again tomorrow without retyping.`;
     if (result.data.timezone === undefined && remembered.data.timezone) result.data.timezone = remembered.data.timezone;
-    draw(result.data.days ? result.data : remembered.data);
+    const uri = state.uiTools[result.name];
+    if (uri && !result.isError) {
+      await readUiResource(uri);
+      showCard(result.args, result.raw);
+    } else {
+      draw(result.data.days ? result.data : remembered.data);
+    }
   } catch (error) {
     kicker.textContent = "The call failed";
     headline.textContent = "The server did not return an estimate.";
@@ -307,6 +414,55 @@ async function finishConnect() {
 }
 
 connect.addEventListener("click", () => void beginConnect());
+
+// Voice in: the browser's speech recognition picks one of the questions. Voice out: speechSynthesis reads the tool text.
+const intents = [
+  ["remember", /\b(remember|memorize)\b/],
+  ["saved-day", /\bplan\b.*\b(saved|my appliances|usual)\b/],
+  ["outage", /\b(battery|outage|night|blackout)\b/],
+  ["day", /\b(plan|dishwasher|car)\b/],
+  ["briefing", /\b(morning|briefing|window)\b/],
+  ["savings", /\b(save|saving|money|cost)\b/],
+  ["forecast", /\b(how much|forecast|produce|make)\b/],
+  ["saved-wash", /\b(washer|washing|laundry)\b/],
+];
+
+function intentFor(text) {
+  const lower = text.toLowerCase();
+  for (const [kind, pattern] of intents) if (pattern.test(lower)) return kind;
+  return "";
+}
+
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!Recognition) {
+  mic.disabled = true;
+  mic.title = "This browser has no speech recognition. Tap a question instead.";
+} else {
+  mic.addEventListener("click", () => {
+    const recognizer = new Recognition();
+    recognizer.lang = "en-US";
+    recognizer.interimResults = false;
+    recognizer.maxAlternatives = 1;
+    mic.classList.add("is-listening");
+    heard.textContent = "Listening…";
+    recognizer.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      const kind = intentFor(text);
+      heard.textContent = kind ? `Heard: “${text}”` : `Heard: “${text}”. Try asking about the battery, the washer, or the day plan.`;
+      if (kind) void ask(kind);
+    };
+    recognizer.onerror = () => { heard.textContent = "I didn't catch that. Tap a question instead."; };
+    recognizer.onend = () => mic.classList.remove("is-listening");
+    recognizer.start();
+  });
+}
+speakToggle.checked = state.speak;
+speakToggle.addEventListener("change", () => {
+  state.speak = speakToggle.checked;
+  localStorage.setItem("sol-solar-speak", state.speak ? "on" : "off");
+  if (!state.speak && "speechSynthesis" in window) window.speechSynthesis.cancel();
+});
+if (state.siteId) memory.textContent = "This browser remembers your home from an earlier visit. Ask about your saved appliances.";
 for (const button of document.querySelectorAll("[data-ask]")) {
   button.addEventListener("click", () => {
     for (const other of document.querySelectorAll("[data-ask]")) other.classList.remove("is-active");

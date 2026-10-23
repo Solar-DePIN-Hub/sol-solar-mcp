@@ -28,6 +28,11 @@ import {
   speakSite,
   speakTypicalOnly,
 } from "./solar/speech.js";
+import { findAppliance, mergeAppliances, MAX_SAVED_APPLIANCES, type SavedAppliance, type SolarSite } from "./sites.js";
+import { SOLAR_CARD_HTML, SOLAR_CARD_MIME, SOLAR_CARD_URI } from "./ui/solarCard.js";
+
+/** MCP Apps (SEP-1865): hosts that support it render this card next to the spoken answer. */
+const cardMeta = { ui: { resourceUri: SOLAR_CARD_URI } };
 
 const locationFields = {
   site_id: z.string().optional().describe("site_id from an earlier Sol Solar tool. Pass this on follow-up questions."),
@@ -118,6 +123,32 @@ function cleanName(name: string): string {
     throw new SolarError("Tell me the appliance name in plain words, such as washing machine.");
   }
   return cleaned;
+}
+
+function formatKw(value: number): string {
+  return `${Number(value.toFixed(2))} kilowatt${value === 1 ? "" : "s"}`;
+}
+
+function formatHours(value: number): string {
+  return `${Number(value.toFixed(2))} hour${value === 1 ? "" : "s"}`;
+}
+
+/** Use what the person typed now, and fill any gap from an appliance they saved earlier. */
+function applianceSpec(site: SolarSite, name: string, powerKw: number | undefined, durationHours: number | undefined): SavedAppliance & { remembered: boolean } {
+  const saved = findAppliance(site, name);
+  const power = powerKw ?? saved?.powerKw;
+  const duration = durationHours ?? saved?.durationHours;
+  if (power === undefined || duration === undefined) {
+    throw new SolarError(`Tell me the ${name}'s power in kilowatts and how many hours it runs. I can remember it for next time.`);
+  }
+  return { name, powerKw: power, durationHours: duration, remembered: saved !== undefined && powerKw === undefined && durationHours === undefined };
+}
+
+function speakRemembered(site: SolarSite, added: SavedAppliance[]): string {
+  const parts = added.map((item) => `the ${item.name} at ${formatKw(item.powerKw)} for ${formatHours(item.durationHours)}`);
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  const total = site.appliances?.length ?? 0;
+  return `Saved for ${site.label}: ${list}. That is ${total} appliance${total === 1 ? "" : "s"} for this home. Next time, just ask when to run it, or ask me to plan the day. You typed these numbers. They are not read from a meter.`;
 }
 
 function pricePair(price: number | undefined, currency: string | undefined): { price: number | null; currency: string | null } {
@@ -274,6 +305,7 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
   }));
 
   server.registerTool("forecast_pv_production", {
+    _meta: cardMeta,
     title: "Forecast production",
     description: "Estimate today's and tomorrow's photovoltaic production for the remembered array, and compare today with a PVGIS typical day for this month. Say the returned text. Do not invent a second number.",
     inputSchema: locationFields,
@@ -340,13 +372,20 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
   }));
 
   server.registerTool("best_time_for_appliance", {
+    _meta: cardMeta,
     title: "Best time to run an appliance",
     description: "Answer 'when should I run the washing machine?' and similar questions. Uses the forecast, caps usable solar at the appliance's power, and prefers today when the roof can cover the load. Say the returned text verbatim in substance. Do not pick a different hour.",
-    inputSchema: { ...locationFields, ...applianceFields },
+    inputSchema: {
+      ...locationFields,
+      ...applianceFields,
+      power_kw: applianceFields.power_kw.optional().describe("Average power draw in kilowatts. Omit when this appliance was saved with remember_household_appliances."),
+      duration_hours: applianceFields.duration_hours.optional().describe("How many hours it runs. Omit when this appliance was saved earlier."),
+    },
     outputSchema: {
       site_id: z.string(),
       timezone: z.string(),
       decision: z.string(),
+      used_saved_appliance: z.boolean(),
       spoken: z.string(),
       window: windowSchema,
       days: z.array(daySchema),
@@ -360,26 +399,28 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
     const started = Date.now();
     const name = cleanName(args.appliance_name);
     const site = await resolveSite(deps, siteRequest(args, extra.sessionId));
+    const spec = applianceSpec(site, name, args.power_kw, args.duration_hours);
     const production = await loadProduction(deps, site);
     const now = deps.now();
     const plan = planFor(production, {
-      powerKw: args.power_kw,
-      durationHours: args.duration_hours,
+      powerKw: spec.powerKw,
+      durationHours: spec.durationHours,
       day: args.day ?? "auto",
       baselineHour: args.baseline_hour ?? 19,
       now,
     });
     const spoken = speakAppliance({
       applianceName: name,
-      powerKw: args.power_kw,
-      durationHours: args.duration_hours,
+      powerKw: spec.powerKw,
+      durationHours: spec.durationHours,
       plan,
       typicalDailyKwh: production.typical?.dailyKwh,
       typicalMonth: production.typical?.month,
     });
-    return ok(spoken, {
+    return ok(spec.remembered ? `${spoken} I used the power and duration you saved for the ${name}.` : spoken, {
       ...forecastBody(production, plan, now, started),
       decision: plan.decision,
+      used_saved_appliance: spec.remembered,
       window: windowPayload(plan.window, production, now),
     });
   }));
@@ -438,6 +479,7 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
   }));
 
   server.registerTool("daily_solar_briefing", {
+    _meta: cardMeta,
     title: "Daily solar briefing",
     description: "Morning routine briefing. Leads with the best solar window and, when the forecast includes cloud cover, whether clouds hang on. Then today's production, tomorrow's, a typical-year comparison, and optionally one appliance. Say the returned text.",
     inputSchema: {
@@ -485,21 +527,19 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
     let plan: AppliancePlan | null = null;
     let applianceSpoken: string | undefined;
     if (args.appliance_name) {
-      if (args.power_kw === undefined || args.duration_hours === undefined) {
-        throw new SolarError("Tell me the appliance power in kilowatts and how many hours it runs.");
-      }
       const name = cleanName(args.appliance_name);
+      const spec = applianceSpec(site, name, args.power_kw, args.duration_hours);
       plan = planFor(production, {
-        powerKw: args.power_kw,
-        durationHours: args.duration_hours,
+        powerKw: spec.powerKw,
+        durationHours: spec.durationHours,
         day: args.day ?? "auto",
         baselineHour: args.baseline_hour ?? 19,
         now,
       });
       applianceSpoken = speakAppliance({
         applianceName: name,
-        powerKw: args.power_kw,
-        durationHours: args.duration_hours,
+        powerKw: spec.powerKw,
+        durationHours: spec.durationHours,
         plan,
         typicalDailyKwh: null,
       });
@@ -514,6 +554,7 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
   }));
 
   server.registerTool("plan_the_solar_day", {
+    _meta: cardMeta,
     title: "Plan several appliances",
     description: "Schedule up to six appliances into today's or tomorrow's solar forecast. Appliances share an hour only when their combined power fits under that hour's expected output. Say the returned text. Do not move a task to a different hour.",
     inputSchema: {
@@ -522,7 +563,7 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
         name: z.string().min(2).max(40),
         power_kw: z.number().gt(0).max(50),
         duration_hours: z.number().min(0.25).max(12),
-      })).min(1).max(6).describe("Loads to place, in priority order. Each power and duration is an assumption the person provides."),
+      })).min(1).max(6).optional().describe("Loads to place, in priority order. Each power and duration is an assumption the person provides. Omit to plan the appliances saved for this home."),
     },
     outputSchema: {
       site_id: z.string(),
@@ -548,11 +589,15 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
     const site = await resolveSite(deps, siteRequest(args, extra.sessionId));
     const production = await loadProduction(deps, site);
     const now = deps.now();
-    const loads = args.appliances.map((item) => ({
+    const typed = args.appliances?.map((item) => ({
       name: cleanName(item.name),
       powerKw: item.power_kw,
       durationHours: item.duration_hours,
     }));
+    const loads = typed ?? (site.appliances ?? []).slice(0, 6);
+    if (loads.length === 0) {
+      throw new SolarError("Tell me which appliances to plan, with power and hours, or save them for this home first.");
+    }
     const schedule = scheduleDay({ slots: production.slots, timeZone: production.timezone, now, loads });
     const spoken = speakDayPlan(schedule);
     const runs: ScheduledRun[] = schedule.runs;
@@ -570,6 +615,7 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
   }));
 
   server.registerTool("battery_through_the_night", {
+    _meta: cardMeta,
     title: "Will the battery last the night",
     description: "Answer whether a home battery the person described will last until sunrise, and when the forecast sun can refill it. Capacity, charge, and household load must be typed by the person. Say the returned text. Do not invent a battery reading.",
     inputSchema: {
@@ -629,6 +675,46 @@ export function registerSolarTools(server: McpServer, deps: Deps): void {
       runs_out_at: night.runsOutAt?.toISOString() ?? null,
       refill_at: night.refillAt?.toISOString() ?? null,
     });
+  }));
+
+  server.registerTool("remember_household_appliances", {
+    title: "Remember my appliances",
+    description: "Save appliances for this home, with the power and run time the person typed, so later questions can say 'the washer' without repeating numbers. Saved with the site, so a later session can use them through the site_id. Up to 8 per home. Say the returned text.",
+    inputSchema: {
+      ...locationFields,
+      appliances: z.array(z.object({
+        name: z.string().min(2).max(40),
+        power_kw: z.number().gt(0).max(50),
+        duration_hours: z.number().min(0.25).max(12),
+      })).min(1).max(MAX_SAVED_APPLIANCES).describe("Appliances to remember. Power and duration are what the person typed."),
+    },
+    outputSchema: {
+      site_id: z.string(),
+      spoken: z.string(),
+      appliances: z.array(z.object({ name: z.string(), power_kw: z.number(), duration_hours: z.number() })),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false, idempotentHint: true },
+  }, async (args, extra) => withErrors("remember_household_appliances", async () => {
+    const site = await resolveSite(deps, siteRequest(args, extra.sessionId));
+    const added = args.appliances.map((item) => ({ name: cleanName(item.name), powerKw: item.power_kw, durationHours: item.duration_hours }));
+    const next = await deps.sites.persist(deps.sites.save({ ...site, appliances: mergeAppliances(site.appliances, added) }, extra.sessionId));
+    return ok(speakRemembered(next, added), {
+      site_id: next.id,
+      appliances: (next.appliances ?? []).map((item) => ({ name: item.name, power_kw: item.powerKw, duration_hours: item.durationHours })),
+    });
+  }));
+
+  server.registerResource("solar_day_card", SOLAR_CARD_URI, {
+    title: "Solar day card",
+    description: "MCP App view for Sol Solar tool results: hourly production bars, the chosen window, the day plan, and the battery check.",
+    mimeType: SOLAR_CARD_MIME,
+  }, async () => ({
+    contents: [{
+      uri: SOLAR_CARD_URI,
+      mimeType: SOLAR_CARD_MIME,
+      text: SOLAR_CARD_HTML,
+      _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } },
+    }],
   }));
 
   server.registerPrompt("answer_solar_question", {

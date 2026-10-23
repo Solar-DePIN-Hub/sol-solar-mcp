@@ -117,11 +117,12 @@ async function mountFor(
 }
 
 export async function resolveSite(deps: Deps, request: SiteRequest): Promise<SolarSite> {
-  const existing = deps.sites.resolve(request.sessionId, request.siteId);
+  let existing = deps.sites.resolve(request.sessionId, request.siteId);
+  if (!existing && request.siteId) existing = await deps.sites.load(request.siteId, request.sessionId);
   const hasLocation = request.place !== undefined || (request.latitude !== undefined && request.longitude !== undefined);
   if (!hasLocation) {
     if (!existing && request.siteId) {
-      throw new SolarError("I don't have that site anymore. Memory lives in this server process, so a restart clears it. Tell me the city and array size again.");
+      throw new SolarError("I don't have that site anymore. Tell me the city and array size again.");
     }
     if (!existing) {
       throw new SolarError("I don't know which roof you mean yet. Tell me the city and the array size in kilowatts.");
@@ -137,7 +138,7 @@ export async function resolveSite(deps: Deps, request: SiteRequest): Promise<Sol
     if (request.tiltDegrees !== undefined || request.azimuthDegrees !== undefined) {
       next.tiltSource = "user";
     }
-    return deps.sites.save(next, request.sessionId);
+    return deps.sites.persist(deps.sites.save(next, request.sessionId));
   }
 
   let latitude = request.latitude;
@@ -184,9 +185,10 @@ export async function resolveSite(deps: Deps, request: SiteRequest): Promise<Sol
     tiltSource: request.tiltDegrees !== undefined && request.azimuthDegrees !== undefined ? "user" : mount.source,
     pricePerKwh: request.pricePerKwh === undefined ? existing?.pricePerKwh ?? null : request.pricePerKwh,
     currency: request.currency === undefined ? existing?.currency ?? null : request.currency,
+    appliances: existing?.appliances,
   };
-  if (existing) return deps.sites.save({ ...site, id: existing.id }, request.sessionId);
-  return deps.sites.create(site, request.sessionId);
+  if (existing) return deps.sites.persist(deps.sites.save({ ...site, id: existing.id }, request.sessionId));
+  return deps.sites.persist(deps.sites.create(site, request.sessionId));
 }
 
 export async function loadProduction(deps: Deps, site: SolarSite): Promise<Production> {

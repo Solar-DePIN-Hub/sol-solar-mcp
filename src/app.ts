@@ -11,6 +11,7 @@ import { SiteBook } from "./sites.js";
 import type { Deps } from "./service.js";
 import type { KeyValueStore } from "./store.js";
 import { registerSolarTools } from "./tools.js";
+import { SOLAR_CARD_HTML } from "./ui/solarCard.js";
 
 const MAX_SESSIONS = 200;
 
@@ -36,9 +37,9 @@ function originAllowed(config: Config, origin: string | undefined): boolean {
 function buildServer(deps: Deps): McpServer {
   const server = new McpServer({
     name: "sol-solar",
-    version: "1.0.0",
+    version: "1.1.0",
   }, {
-    instructions: "Sol Solar estimates photovoltaic production for one home or small array. It says when to run appliances, whether a typed battery lasts the night, and gives a morning solar briefing. Speak the tool text to the person. Never invent kilowatt-hours, a clock time, a battery size, or a household load. Figures are model estimates, not inverter measurements. Keep the site_id between turns.",
+    instructions: "Sol Solar estimates photovoltaic production for one home or small array. It says when to run appliances, whether a typed battery lasts the night, and gives a morning solar briefing. Speak the tool text to the person. Never invent kilowatt-hours, a clock time, a battery size, or a household load. Figures are model estimates, not inverter measurements. Keep the site_id between turns and between sessions: it also holds the appliances the person saved, so later they can just say 'the washer'. Tools that draw a day chart point to the MCP App ui://sol-solar/solar-card.html.",
   });
   registerSolarTools(server, deps);
   return server;
@@ -49,7 +50,7 @@ export function createApp(config: Config, options: AppOptions = {}): { app: Expr
   const deps: Deps = {
     config,
     store,
-    sites: new SiteBook(),
+    sites: new SiteBook(store),
     fetch: options.fetch ?? fetch,
     now: options.now ?? (() => new Date()),
   };
@@ -98,6 +99,12 @@ export function createApp(config: Config, options: AppOptions = {}): { app: Expr
       resource: config.resourceUrl,
       protocolVersion: "2025-11-25",
     });
+  });
+  // HTTP mirror of the ui://sol-solar/solar-card.html MCP App resource, byte for byte.
+  // The voice client loads it into a sandboxed iframe, because its own CSP blocks inline script in srcdoc.
+  app.get("/ui/solar-card.html", (_req, res) => {
+    res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'");
+    res.type("html").send(SOLAR_CARD_HTML);
   });
   registerAuth(app, config, store);
 
